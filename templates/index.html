@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>双PDF文件上传处理器</title>
+</head>
+<body>
+    <h1>PDF文件上传处理器</h1>
+    <form id="uploadForm" enctype="multipart/form-data">
+        <label for="scanFile">上传扫描文件 (PDF):</label>
+        <input type="file" id="scanFile" name="scanFile" accept=".pdf" required>
+        <span id="scanStatus" style="color: blue;"></span><br><br>
+
+        <label for="templateFile">上传模板文件 (PDF):</label>
+        <input type="file" id="templateFile" name="templateFile" accept=".pdf" required>
+        <span id="templateStatus" style="color: blue;"></span><br><br>
+
+        <button type="button" onclick="processFiles('process1')">使用Process 1处理</button>
+        <button type="button" onclick="processFiles('process2')">使用Process 2处理</button>
+    </form>
+
+    <div id="result" style="margin-top: 20px; display: none;">
+        <h3>处理结果:</h3>
+        <pre id="jsonPreview"></pre>
+        <a id="downloadLink" href="/download" style="display: none;">下载 JSON</a>
+    </div>
+
+    <script>
+        async function processFiles(endpoint) {
+            const scanFileInput = document.getElementById('scanFile');
+            const templateFileInput = document.getElementById('templateFile');
+
+            if (!scanFileInput.files[0] || !templateFileInput.files[0]) {
+                alert('请确保两个文件都已选择。');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('scanFile', scanFileInput.files[0]);
+            formData.append('templateFile', templateFileInput.files[0]);
+
+            try {
+                const response = await fetch(`/${endpoint}`, { 
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const jsonResult = await response.json();
+                    document.getElementById('jsonPreview').textContent = JSON.stringify(jsonResult, null, 2);
+                    document.getElementById('result').style.display = 'block';
+                    document.getElementById('downloadLink').style.display = 'block';
+                } else {
+                    console.error(`HTTP Error: Status Code ${response.status} - ${response.statusText}`);
+                    try {
+                        const errorData = await response.json();
+                        alert(`处理文件时出错: ${errorData.error} (Status Code: ${response.status})`);
+                    } catch (parseError) {
+                        alert(`服务器返回错误: Status Code ${response.status} - ${response.statusText}`);
+                    }
+                }
+            } catch (error) {
+                console.error(error);
+                alert('上传或处理文件时发生错误，请检查网络连接或文件格式。');
+            }
+        }
+    </script>
+</body>
+</html>
