@@ -8,7 +8,7 @@ templates里边的index是前端代码，构建前端样式并与后端连接。
 我将实验用的mode和scanned-test存在了static文件夹中，可以用这个实验。
 
 1111
-
+2222
 
 /这是各个文件位置
 │
