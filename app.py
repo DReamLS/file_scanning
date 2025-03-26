@@ -60,7 +60,9 @@ def handle_process_request(req, process_func):
         with open(OUTPUT_FILE, 'w', encoding='utf-8') as f:
             import json
             json.dump(result, f, indent=4, ensure_ascii=False)
-
+        # 删除临时文件
+        delete_file(scan_path)
+        delete_file(template_path)
         return jsonify(result)  # 返回处理结果
 
     except Exception as e:
@@ -68,10 +70,7 @@ def handle_process_request(req, process_func):
         print(f"Error processing files: {e}")
         return jsonify({"error": str(e)}), 500
 
-    finally:
-        # 删除临时文件
-        delete_file(scan_path)
-        delete_file(template_path)
+
 
 
 @app.route('/download', methods=['GET'])
