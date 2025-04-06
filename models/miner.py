@@ -1,12 +1,13 @@
-from io import BytesIO
+import io
 import fitz  # PyMuPDF
 import cv2
 import numpy as np
 from PIL import Image
 import re
 from paddleocr import PaddleOCR
-
-
+from models import scanned2mode
+import json
+import base64
 # 获取过滤正则表达式
 def get_filter_reg(stopwords_path):
     with open(stopwords_path, 'r', encoding='utf-8') as f:
@@ -59,22 +60,29 @@ def detect_border(image):
     return pts_border, (canvas_width, canvas_height)
 
 
-def transform_image(img):
+def transform_image(img, canvas_size=(1000, 1000), margin=80):
     img_cv = np.array(img)
 
-    # 使用detect_border函数获取边界点
+    # 假设detect_border函数返回图像的边界点和建议的画布宽度和高度
     try:
-        pts_border, (canvas_width, canvas_height) = detect_border(img_cv)
+        pts_border, (original_width, original_height) = detect_border(img_cv)  # 请确保这个函数存在并正确工作
     except ValueError as e:
         print(e)
         return None
 
-    # 目标点定义一个与原图比例相同的矩形区域，
-    dst_pts = np.array([[80, 80], [canvas_width+80, 80], [canvas_width+80, canvas_height+80], [80, canvas_height+80]], dtype="float32")
+    # 计算比例并调整目标canvas尺寸
+    ratio = min((canvas_size[0] - 2 * margin) / original_width, (canvas_size[1] - 2 * margin) / original_height)
+    target_width = int(original_width * ratio)
+    target_height = int(original_height * ratio)
+
+    # 定义目标点，使图像居中
+    dst_pts = np.array([[margin, margin], [target_width + margin, margin],
+                        [target_width + margin, target_height + margin], [margin, target_height + margin]],
+                       dtype="float32")
 
     # 计算变换矩阵
-    M = cv2.getPerspectiveTransform(pts_border, dst_pts)
-    transformed_img = cv2.warpPerspective(img_cv, M, (canvas_width+160, canvas_height+160), borderValue=(255, 255, 255))
+    M = cv2.getPerspectiveTransform(pts_border.astype("float32"), dst_pts)
+    transformed_img = cv2.warpPerspective(img_cv, M, (canvas_size[0], canvas_size[1]), borderValue=(255, 255, 255))
 
     # 转换回PIL图像并返回
     return Image.fromarray(cv2.cvtColor(transformed_img, cv2.COLOR_BGR2RGB))
@@ -291,7 +299,7 @@ def build_cells(horizontal_lines, vertical_lines, overlap_threshold=15):
 
 
 # 处理PDF页面
-def process_pdf_page(pdf_path, page_num, hands=0.1):
+def process_pdf_page1(pdf_path, page_num, hands=0.1):
     doc = fitz.open(pdf_path)
     page = doc.load_page(page_num)
     pix = page.get_pixmap()
@@ -314,7 +322,7 @@ def process_pdf_page(pdf_path, page_num, hands=0.1):
         cropped_img = img.crop((x0, y0, x1, y1))
 
         # 使用BytesIO在内存中处理图像而不是保存到磁盘
-        buffer = BytesIO()
+        buffer = io.BytesIO()
         cropped_img.save(buffer, format="PNG")
         buffer.seek(0)  # 移动到字节流的开始
         content = buffer.getvalue()  # 获取字节流中的数据
@@ -341,10 +349,83 @@ def process_pdf_page(pdf_path, page_num, hands=0.1):
 
     return fixed_area, unfixed_area
 
+
+
+def process_pdf_page2(pdf_path, page_num, hands=0.1):
+
+    try:
+        response_text = scanned2mode.process(pdf_path, page_num + 1)  # 注意page_num从0开始，但API可能期望从1开始
+        response_dict = json.loads(response_text)  # 将JSON字符串转换为字典
+    except Exception as e:
+        print(f"API调用或JSON解析错误: {e}")
+        return {}, []
+
+    base64_image_string = response_dict["image_processed"]  # 这里仅作为示例展示了一部分
+
+    # 解码Base64字符串
+    image_data = base64.b64decode(base64_image_string)
+
+    img = Image.open(io.BytesIO(image_data))
+
+
+    # 确认图像模式为RGB
+    if img.mode != 'RGB':
+        img = img.convert('RGB')
+
+    img = transform_image(img)  # 应用你的图像转换逻辑
+    image = np.array(img)  # 将PIL图像转换为numpy数组用于OpenCV
+    binary = preprocess_image(image)
+    horizontal_lines, vertical_lines = detect_and_merge_lines(binary)
+    cells = build_cells(horizontal_lines, vertical_lines)
+
+    ocr = PaddleOCR(use_angle_cls=True, lang="ch", use_gpu=False)
+
+    unfixed_area = []
+    fixed_area = {}
+
+    for (x0, y0, x1, y1) in cells:
+        # 将浮点数坐标转换为整数
+        x0, y0, x1, y1 = map(int, (x0, y0, x1, y1))
+        # 根据坐标裁剪图像
+        cropped_img = img.crop((x0, y0, x1, y1))
+
+        # 使用BytesIO在内存中处理图像而不是保存到磁盘
+        buffer = io.BytesIO()
+        cropped_img.save(buffer, format="PNG")
+        buffer.seek(0)  # 移动到字节流的开始
+        content = buffer.getvalue()  # 获取字节流中的数据
+
+        # 使用opencv从内存加载图像
+        img_array = np.asarray(bytearray(content), dtype=np.uint8)
+        cropped_cv_image = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
+
+        # 识别图片中的文字
+        try:
+            raw_text = ocr.ocr(cropped_cv_image, cls=True)  # 直接传入OpenCV格式的图像
+        except Exception as e:
+            print(f"OCR处理失败: {e}")
+            unfixed_area.append((x0, y0, x1, y1))
+            continue
+
+        if raw_text and isinstance(raw_text[0], list) and len(raw_text[0]) > 0:  # 确保有检测结果
+            text_info = raw_text[0][0]  # 获取第一个检测结果
+            if isinstance(text_info, list) and len(text_info) > 1:
+                text, possibility = text_info[1]  # 解包出text和置信度分数
+                if possibility >= hands:
+                    fixed_area[text + f" 行：{y0}，列：{x0}"] = (x0, y0, x1, y1)
+                else:
+                    unfixed_area.append((x0, y0, x1, y1))
+            else:
+                unfixed_area.append((x0, y0, x1, y1))
+        else:
+            unfixed_area.append((x0, y0, x1, y1))
+
+    return fixed_area, unfixed_area
+
 # 示例调用
 if __name__ == "__main__":
     pdf_path = "../static/mode_Page1.pdf"
     for page_num in range(1):  # 假设我们处理第一页
-        fixed_area, unfixed_area = process_pdf_page(pdf_path, page_num)
+        fixed_area, unfixed_area = process_pdf_page2(pdf_path, page_num)
         print(f"Page {page_num} - Fixed Area:", fixed_area)
         print(f"Page {page_num} - Unfixed Area:", unfixed_area)

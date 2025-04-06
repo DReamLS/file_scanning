@@ -7,6 +7,7 @@ from models import details_abstract
 from models import logic_search
 from models import flexible_area_abstract
 from models import miner
+
 import os
 import io
 import cv2
@@ -79,6 +80,7 @@ def linking(mode, scanned, approximate):
     try:
         for num in range(min(len(mode), len(scanned))):
             img = scanned[num]
+
             for (x0, y0, x1, y1), tree in mode[num].items():
                 x0, y0, x1, y1 = map(int, (x0 + dx0, y0 + dy0, x1 + dx1, y1 + dy1))
                 cropped_img = img.crop((x0, y0, x1, y1))
@@ -141,7 +143,7 @@ def detect_border(image):
 
 #电子模板处理函数
 
-def mode_process(pdf_path):
+def mode_process1(pdf_path):
     """
     模板处理函数
     """
@@ -165,7 +167,7 @@ def mode_process(pdf_path):
     return result, extension
 
 
-def scanned_process(mode_path, pdf_path, mode_extension):
+def scanned_process1(mode_path, pdf_path, mode_extension):
     result = {}
 
     # 打开PDF文档
@@ -276,15 +278,15 @@ def scanned_process(mode_path, pdf_path, mode_extension):
     return result
 
 
-def process(mode_path, scanned_path):
+def process1(mode_path, scanned_path):
     """
     主处理函数
     """
     try:
-        mode_result, mode_extension = mode_process(mode_path)
+        mode_result, mode_extension = mode_process1(mode_path)
         logging.info(f"模板处理结果：{mode_result}")
 
-        scanned_result = scanned_process(mode_path, scanned_path, mode_extension)
+        scanned_result = scanned_process1(mode_path, scanned_path, mode_extension)
 
         approximate = (0, 0, 0, 5)
         result = linking(mode_result, scanned_result, approximate)
@@ -306,7 +308,7 @@ def mode_process2(pdf_path):
     try:
         doc = PyMuPDF.open(pdf_path)
         for page_num in range(len(doc)):
-            fixed_area, unfixed_area = miner.process_pdf_page(pdf_path, page_num,hands = 0.1)
+            fixed_area, unfixed_area = miner.process_pdf_page1(pdf_path, page_num,hands = 0.1)
             logic = logic_search.search(fixed_area)
             flexible_area = flexible_area_abstract.flexible_abstract(logic, fixed_area, unfixed_area)
             result[page_num] = flexible_area
@@ -317,39 +319,29 @@ def mode_process2(pdf_path):
     return result
 
 
-def transform_image(img):
+def transform_image2(img, canvas_size=(1000, 1000), margin=80):
     img_cv = np.array(img)
 
-    cv2.imshow("Original Image", img_cv)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
-
-    # 使用detect_border函数获取边界点
+    # 假设detect_border函数返回图像的边界点和建议的画布宽度和高度
     try:
-        pts_border, (canvas_width, canvas_height) = detect_border(img_cv)
+        pts_border, (original_width, original_height) = detect_border(img_cv)  # 请确保这个函数存在并正确工作
     except ValueError as e:
         print(e)
         return None
 
-    # 绘制检测到的边界
-    contour_image = img_cv.copy()
-    cv2.drawContours(contour_image, [pts_border.astype(int)], -1, (0, 255, 0), 3)
-    cv2.imshow("Detected Border", contour_image)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    # 计算比例并调整目标canvas尺寸
+    ratio = min((canvas_size[0] - 2 * margin) / original_width, (canvas_size[1] - 2 * margin) / original_height)
+    target_width = int(original_width * ratio)
+    target_height = int(original_height * ratio)
 
-    # 目标点定义一个与原图比例相同的矩形区域，没有旋转
-    # 目标点定义一个与原图比例相同的矩形区域，没有旋转
-    dst_pts = np.array([[80, 80], [canvas_width+80, 80], [canvas_width+80, canvas_height+80], [80, canvas_height+80]], dtype="float32")
+    # 定义目标点，使图像居中
+    dst_pts = np.array([[margin, margin], [target_width + margin, margin],
+                        [target_width + margin, target_height + margin], [margin, target_height + margin]],
+                       dtype="float32")
 
     # 计算变换矩阵
-    M = cv2.getPerspectiveTransform(pts_border, dst_pts)
-    transformed_img = cv2.warpPerspective(img_cv, M, (canvas_width+160, canvas_height+160), borderValue=(255, 255, 255))
-
-
-    cv2.imshow("Transformed Image without Rotation", transformed_img)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    M = cv2.getPerspectiveTransform(pts_border.astype("float32"), dst_pts)
+    transformed_img = cv2.warpPerspective(img_cv, M, (canvas_size[0], canvas_size[1]), borderValue=(255, 255, 255))
 
     # 转换回PIL图像并返回
     return Image.fromarray(cv2.cvtColor(transformed_img, cv2.COLOR_BGR2RGB))
@@ -370,7 +362,7 @@ def scanned_process2(pdf_path):
 
         img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
 
-        processed_img =  transform_image(img)
+        processed_img =  transform_image2(img)
 
         # 存储结果
         result[page_num] = processed_img
@@ -401,7 +393,104 @@ def process2(mode_path, scanned_path):
         logging.error(f"主处理流程失败：{e}")
 
 
+#无模板处理函数
+
+def mode_process3(pdf_path):
+    """
+    模板处理函数
+    """
+    result = {}
+    try:
+        doc = PyMuPDF.open(pdf_path)
+        for page_num in range(len(doc)):
+            fixed_area, unfixed_area = miner.process_pdf_page2(pdf_path, page_num,hands = 0.1)
+            logic = logic_search.search(fixed_area)
+            flexible_area = flexible_area_abstract.flexible_abstract(logic, fixed_area, unfixed_area)
+            result[page_num] = flexible_area
+        doc.close()
+    except Exception as e:
+        logging.error(f"模板处理失败：{e}")
+
+    return result
+
+
+def transform_image3(img, canvas_size=(1000, 1000), margin=80):
+    img_cv = np.array(img)
+
+    # 假设detect_border函数返回图像的边界点和建议的画布宽度和高度
+    try:
+        pts_border, (original_width, original_height) = detect_border(img_cv)  # 请确保这个函数存在并正确工作
+    except ValueError as e:
+        print(e)
+        return None
+
+    # 计算比例并调整目标canvas尺寸
+    ratio = min((canvas_size[0] - 2 * margin) / original_width, (canvas_size[1] - 2 * margin) / original_height)
+    target_width = int(original_width * ratio)
+    target_height = int(original_height * ratio)
+
+    # 定义目标点，使图像居中
+    dst_pts = np.array([[margin, margin], [target_width + margin, margin],
+                        [target_width + margin, target_height + margin], [margin, target_height + margin]],
+                       dtype="float32")
+
+    # 计算变换矩阵
+    M = cv2.getPerspectiveTransform(pts_border.astype("float32"), dst_pts)
+    transformed_img = cv2.warpPerspective(img_cv, M, (canvas_size[0], canvas_size[1]), borderValue=(255, 255, 255))
+
+    # 转换回PIL图像并返回
+    return Image.fromarray(cv2.cvtColor(transformed_img, cv2.COLOR_BGR2RGB))
+
+def scanned_process3(pdf_path):
+    result = {}
+
+    # 打开PDF文档
+    doc = PyMuPDF.open(pdf_path)
+
+    for page_num in range(len(doc)):
+        logging.info(f"正在处理扫描文件第 {page_num + 1} 页...")
+
+        # 加载扫描页面并转换为图像
+        page = doc.load_page(page_num)
+        pix = page.get_pixmap()
+
+        img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+
+        processed_img =  transform_image3(img)
+        processed_img.save("xxxx.png")
+
+        # 存储结果
+        result[page_num] = processed_img
+
+    doc.close()
+
+    return result
+
+
+def process3(scanned_path):
+    """
+    主处理函数
+    """
+    try:
+        mode_result = mode_process3(scanned_path)
+        print(mode_result)
+        logging.info(f"模板处理结果：{mode_result}")
+
+        scanned_result = scanned_process3(scanned_path)
+
+        approximate = (0, 0, 0, 5)
+        result = linking(mode_result, scanned_result, approximate)
+
+        logic_tree = build_logic_tree(result)
+        return logic_tree
+
+    except Exception as e:
+        logging.error(f"主处理流程失败：{e}")
+
+
+
+
 if __name__ == "__main__":
-    mode_path = r"../static/mode_Page1.pdf"
+    mode_path = r"../static/scanned-test_Page1.pdf"
     scanned_path = r"../static/scanned-test_Page1.pdf"
-    process2(mode_path, scanned_path)
+    process3(scanned_path)

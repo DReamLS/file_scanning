@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify, send_file, render_template
 from flask_cors import CORS  # 处理跨域请求
 import os
-from models.demo import process as process1_function, process2 as process2_function
+from models.demo import process1 as process1_function, process2 as process2_function, process3 as process3_function
 from utils.file_processing import save_file, delete_file  # 文件处理工具
 
 # 创建 Flask 应用
@@ -21,13 +21,6 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 def serve_index():
     return render_template('index.html')
 
-@app.route('/process1', methods=['POST'])
-def process_files_1():
-    return handle_process_request(request, process1_function)
-
-@app.route('/process2', methods=['POST'])
-def process_files_2():
-    return handle_process_request(request, process2_function)
 
 def handle_process_request(req, process_func):
     """
@@ -73,6 +66,36 @@ def handle_process_request(req, process_func):
         return jsonify({"error": str(e)}), 500
 
 
+@app.route('/process1', methods=['POST'])
+def process_files_1():
+    return handle_process_request(request, process1_function)
+
+@app.route('/process2', methods=['POST'])
+def process_files_2():
+    return handle_process_request(request, process2_function)
+
+@app.route('/process3', methods=['POST'])
+def process_files_3():
+    def handle_process_request(req, process_func):
+        # 只需要扫描文件
+        if 'scanFile' not in req.files:
+            return jsonify({"error": "Missing scan file part"}), 400
+
+        scan_file = req.files['scanFile']
+
+        if scan_file.filename == '':
+            return jsonify({"error": "No selected scan file"}), 400
+
+        if not scan_file.filename.endswith('.pdf'):
+            return jsonify({"error": "Invalid scan file type. Only PDF files are allowed."}), 400
+
+        scan_path = save_file(scan_file, UPLOAD_DIR)
+        result = process_func(scan_path)
+        delete_file(scan_path)
+
+        return jsonify(result)
+
+    return handle_process_request(request, process3_function)
 
 
 @app.route('/download', methods=['GET'])
