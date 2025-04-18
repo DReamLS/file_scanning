@@ -441,6 +441,7 @@ def transform_image3(img, canvas_size=(1000, 1000), margin=80):
     # 转换回PIL图像并返回
     return Image.fromarray(cv2.cvtColor(transformed_img, cv2.COLOR_BGR2RGB))
 
+
 def scanned_process3(pdf_path):
     result = {}
 

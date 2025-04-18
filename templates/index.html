@@ -14,27 +14,27 @@
     </div>
     <div id="option1" style="display:none;">
         <form enctype="multipart/form-data">
-            <label for="scanFile">上传模板文件 (PDF):</label>
-            <input type="file" id="templateFile" name="templateFile" accept=".pdf" required>
-            <label for="scanFile">上传扫描文件 (PDF):</label>
-            <input type="file" id="scanFile" name="scanFile" accept=".pdf" required>
-            <button type="button" onclick="processFiles('process1')">处理</button>
+            <label for="templateFile1">上传电子模板文件 (PDF):</label>
+            <input type="file" id="templateFile1" name="templateFile1" accept=".pdf" required>
+            <label for="scanFile1">上传扫描文件 (PDF):</label>
+            <input type="file" id="scanFile1" name="scanFile1" accept=".pdf" required>
+            <button type="button" onclick="processFiles('process1', 'templateFile1', 'scanFile1')">处理</button>
         </form>
     </div>
     <div id="option2" style="display:none;">
         <form enctype="multipart/form-data">
-            <label for="scanFile">上传模板文件 (PDF):</label>
-            <input type="file" id="templateFile" name="templateFile" accept=".pdf" required>
-            <label for="scanFile">上传扫描文件 (PDF):</label>
-            <input type="file" id="scanFile" name="scanFile" accept=".pdf" required>
-            <button type="button" onclick="processFiles('process2')">处理</button>
+            <label for="templateFile2">上传扫描模板文件 (PDF):</label>
+            <input type="file" id="templateFile2" name="templateFile2" accept=".pdf" required>
+            <label for="scanFile2">上传扫描文件 (PDF):</label>
+            <input type="file" id="scanFile2" name="scanFile2" accept=".pdf" required>
+            <button type="button" onclick="processFiles('process2', 'templateFile2', 'scanFile2')">处理</button>
         </form>
     </div>
     <div id="option3" style="display:none;">
         <form enctype="multipart/form-data">
-            <label for="scanFile">上传文件 (PDF):</label>
-            <input type="file" id="scanFileOnly" name="scanFile" accept=".pdf" required>
-            <button type="button" onclick="processFiles('process3')">处理</button>
+            <label for="scanFileOnly">上传文件 (PDF):</label>
+            <input type="file" id="scanFileOnly" name="scanFileOnly" accept=".pdf" required>
+            <button type="button" onclick="processFiles('process3', null, 'scanFileOnly')">处理</button>
         </form>
     </div>
 
@@ -50,9 +50,9 @@
             document.getElementById(option).style.display = 'block';
         }
 
-        async function processFiles(endpoint) {
-            const scanFileInput = endpoint === 'process3' ? document.getElementById('scanFileOnly') : document.getElementById('scanFile');
-            const templateFileInput = endpoint !== 'process3' ? document.getElementById('templateFile') : null;
+        async function processFiles(endpoint, templateFileId, scanFileId) {
+            const scanFileInput = scanFileId ? document.getElementById(scanFileId) : null;
+            const templateFileInput = templateFileId ? document.getElementById(templateFileId) : null;
 
             if (!scanFileInput.files[0] || (templateFileInput && !templateFileInput.files[0])) {
                 alert('请确保所有必要的文件都已选择。');
@@ -60,8 +60,8 @@
             }
 
             const formData = new FormData();
-            formData.append('scanFile', scanFileInput.files[0]);
-            if(templateFileInput) formData.append('templateFile', templateFileInput.files[0]);
+            if (scanFileInput) formData.append('scanFile', scanFileInput.files[0]);
+            if (templateFileInput) formData.append('templateFile', templateFileInput.files[0]);
 
             try {
                 const response = await fetch(`/${endpoint}`, { 

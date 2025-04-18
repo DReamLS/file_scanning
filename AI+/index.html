@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Knowledge Graph Visualization with Buttons and Slider Zoom</title>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <style>
+        .link { stroke: #999; stroke-opacity: 0.6; }
+        .node circle { stroke: #fff; stroke-width: 1.5px; }
+        .node text { font-size: 10px; pointer-events: none; fill: #333; }
+        .zoom-controls { margin: 10px; }
+    </style>
+</head>
+<body>
+<textarea id="jsonInput" rows="10" cols="50" placeholder="Paste your JSON here..."></textarea>
+<input type="file" id="jsonFile" accept=".json"/>
+<button onclick="loadGraph()">Load Graph</button>
+
+<!-- 控制缩放的UI组件 -->
+<div class="zoom-controls">
+    <button onclick="zoomBy(1.2)">+</button>
+    <input type="range" id="zoomSlider" min="0.1" max="10" step="0.1" value="1" oninput="updateZoom(this.value)">
+    <button onclick="zoomBy(1/1.2)">-</button>
+    <span id="zoomLevel">1x</span>
+</div>
+
+<svg width="960" height="600"></svg>
+
+<script>
+    const svg = d3.select("svg"),
+          width = +svg.attr("width"),
+          height = +svg.attr("height"),
+          zoom = d3.zoom().scaleExtent([0.1, 10]).on("zoom", zoomed),
+          g = svg.append("g");
+
+    let currentScale = 1;
+
+    svg.call(zoom);
+
+    function zoomed(event) {
+        g.attr("transform", event.transform);
+        updateZoomLevelDisplay(event.transform.k);
+    }
+
+    function loadGraph() {
+        const inputJson = document.getElementById('jsonInput').value;
+        const fileInput = document.getElementById('jsonFile');
+
+        if (inputJson) {
+            visualize(JSON.parse(inputJson));
+        } else if (fileInput.files.length > 0) {
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => visualize(data));
+        }
+    }
+
+    function visualize(graph) {
+        // 清除现有图形
+        svg.selectAll("*").remove();
+        const g = svg.append("g");
+
+        const link = g.append("g")
+            .attr("class", "links")
+            .selectAll("line")
+            .data(graph.links)
+            .enter().append("line")
+            .attr("class", "link");
+
+        const node = g.append("g")
+            .attr("class", "nodes")
+            .selectAll("g")
+            .data(graph.nodes)
+            .enter().append("g")
+            .attr("class", "node")
+            .call(drag());
+
+        node.append("circle")
+            .attr("r", 10);
+
+        node.append("text")
+            .attr("dx", 12)
+            .attr("dy", ".35em")
+            .text(d => d.label);
+
+        const simulation = d3.forceSimulation(graph.nodes)
+            .force("link", d3.forceLink(graph.links).id(d => d.id).distance(150))
+            .force("charge", d3.forceManyBody().strength(-10))
+            .force("center", d3.forceCenter(width / 2, height / 2));
+
+        simulation.on("tick", () => {
+            link
+                .attr("x1", d => d.source.x)
+                .attr("y1", d => d.source.y)
+                .attr("x2", d => d.target.x)
+                .attr("y2", d => d.target.y);
+
+            node
+                .attr("transform", d => `translate(${d.x},${d.y})`);
+        });
+
+        function drag() {
+            function dragstarted(event, d) {
+                if (!event.active) simulation.alphaTarget(0.3).restart();
+                d.fx = d.x;
+                d.fy = d.y;
+            }
+
+            function dragged(event, d) {
+                d.fx = event.x;
+                d.fy = event.y;
+            }
+
+            function dragended(event, d) {
+                if (!event.active) simulation.alphaTarget(0);
+                d.fx = null;
+                d.fy = null;
+            }
+
+            return d3.drag()
+                .on("start", dragstarted)
+                .on("drag", dragged)
+                .on("end", dragended);
+        }
+    }
+
+    function zoomBy(factor) {
+        const newScale = currentScale * factor;
+        const transform = d3.zoomIdentity.translate(width / 2, height / 2)
+            .scale(newScale)
+            .translate(-width / 2, -height / 2);
+        svg.transition().duration(750).call(zoom.transform, transform);
+        currentScale = newScale;
+        document.getElementById('zoomSlider').value = newScale;
+        updateZoomLevelDisplay(newScale);
+    }
+
+    function updateZoom(value) {
+        const scale = parseFloat(value);
+        const transform = d3.zoomIdentity.translate(width / 2, height / 2)
+            .scale(scale)
+            .translate(-width / 2, -height / 2);
+        svg.transition().duration(750).call(zoom.transform, transform);
+        currentScale = scale;
+        updateZoomLevelDisplay(scale);
+    }
+
+    function updateZoomLevelDisplay(scale) {
+        document.getElementById('zoomLevel').textContent = `${scale.toFixed(2)}x`;
+    }
+</script>
+</body>
+</html>
