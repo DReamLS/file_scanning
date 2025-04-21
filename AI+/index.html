@@ -2,158 +2,338 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Knowledge Graph Visualization with Buttons and Slider Zoom</title>
+    <title>Dynamic Knowledge Graph Visualization</title>
     <script src="https://d3js.org/d3.v6.min.js"></script>
     <style>
-        .link { stroke: #999; stroke-opacity: 0.6; }
-        .node circle { stroke: #fff; stroke-width: 1.5px; }
+        .link { stroke: blue; stroke-opacity: 0.6; }
+        .node circle { stroke: #fff; stroke-width: 1.5px; cursor: pointer; }
         .node text { font-size: 10px; pointer-events: none; fill: #333; }
-        .zoom-controls { margin: 10px; }
+        #sidebar { position: absolute; top: 0; right: 0; width: 30%; background-color: white; padding: 10px; border-left: 1px solid #ccc; height: 100%; overflow-y: auto; }
     </style>
 </head>
 <body>
 <textarea id="jsonInput" rows="10" cols="50" placeholder="Paste your JSON here..."></textarea>
 <input type="file" id="jsonFile" accept=".json"/>
 <button onclick="loadGraph()">Load Graph</button>
+<button onclick="downloadGraph()">Download Graph as JSON</button>
 
-<!-- 控制缩放的UI组件 -->
-<div class="zoom-controls">
-    <button onclick="zoomBy(1.2)">+</button>
-    <input type="range" id="zoomSlider" min="0.1" max="10" step="0.1" value="1" oninput="updateZoom(this.value)">
-    <button onclick="zoomBy(1/1.2)">-</button>
-    <span id="zoomLevel">1x</span>
+<svg width="1600" height="1000">
+    <g transform="translate(0,0)scale(1)">
+    </g>
+</svg>
+
+<div id="sidebar">
+    <h3>Node Information</h3>
+    <div id="nodeDetails"></div>
+    <button onclick="submitChanges()">Submit Changes</button>
 </div>
 
-<svg width="960" height="600"></svg>
-
 <script>
+let graph = {};
+let selectedNode = null;
+
+function loadGraph() {
+    const inputJson = document.getElementById('jsonInput').value;
+    const fileInput = document.getElementById('jsonFile');
+
+    if (inputJson) {
+        fetch('/upload', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: inputJson
+        })
+        .then(response => response.text())
+        .then(data => visualize(JSON.parse(data)));
+    } else if (fileInput.files.length > 0) {
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+
+        fetch('/upload', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.text())
+        .then(data => visualize(JSON.parse(data)));
+    }
+}
+
+function visualize(jsonData) {
+    let nodes = [], links = [];
+
+    function addNodeAndLinks(parentId, data, depth = 0) {
+        if (typeof data === 'object') {
+            Object.keys(data).forEach(key => {
+                const nodeId = `${parentId}-${key}`;
+                nodes.push({ id: nodeId, label: key, group: `group-${depth}` });
+
+                if (parentId !== 'root') {
+                    links.push({ source: parentId, target: nodeId });
+                }
+
+                if (Array.isArray(data[key])) {
+                    data[key].forEach(item => {
+                        const itemNodeId = `${nodeId}-${item.replace(/\s+/g, '-')}`;
+                        nodes.push({ id: itemNodeId, label: item, group: `group-${depth + 1}` });
+                        links.push({ source: nodeId, target: itemNodeId });
+                    });
+                } else if (typeof data[key] === 'object') {
+                    addNodeAndLinks(nodeId, data[key], depth + 1);
+                }
+            });
+        }
+    }
+
+    addNodeAndLinks('root', jsonData);
+
+    // 转换为D3.js所需的格式
+    links.forEach(link => {
+        link.source = nodes.find(node => node.id === link.source);
+        link.target = nodes.find(node => node.id === link.target);
+    });
+
+    graph = {nodes: nodes, links: links};
+
+    renderGraph(graph);
+}
+
+function renderGraph(graph) {
     const svg = d3.select("svg"),
           width = +svg.attr("width"),
-          height = +svg.attr("height"),
-          zoom = d3.zoom().scaleExtent([0.1, 10]).on("zoom", zoomed),
-          g = svg.append("g");
+          height = +svg.attr("height");
 
-    let currentScale = 1;
+    svg.selectAll("*").remove();
+
+    const g = svg.append("g")
+        .attr("transform", "translate(0,0)scale(1)");
+
+    const layerSpacing = 400, nodeRadius = 5;
+
+    // 获取所有根节点
+    const rootNodes = graph.nodes.filter(node => !graph.links.some(link => link.target.id === node.id));
+
+    let yOffset = 50; // 初始偏移量
+
+    rootNodes.forEach((rootNode, index) => {
+        const hierarchy = buildHierarchy(rootNode, graph.links);
+
+        // 计算每个层次的最大Y值
+        let maxYInHierarchy = 0;
+
+        for (let depth = Object.keys(hierarchy).length - 1; depth >= 0; depth--) {
+            if (!hierarchy[depth]) continue;
+            const nodesInLayer = hierarchy[depth];
+            let yStep = (height - 100) / (nodesInLayer.length + 1);
+            nodesInLayer.forEach((node, index) => {
+                node.y = yStep * (index + 1);
+            });
+
+            maxYInHierarchy = Math.max(maxYInHierarchy, ...nodesInLayer.map(node => node.y));
+
+            if (hierarchy[depth - 1]) {
+                hierarchy[depth - 1].forEach(parentNode => {
+                    const children = graph.links.filter(link => link.source.id === parentNode.id)
+                                                .map(link => link.target);
+                    const minY = Math.min(...children.map(child => child.y));
+                    const maxY = Math.max(...children.map(child => child.y));
+                    parentNode.y = (minY + maxY) / 2;
+                });
+            }
+        }
+
+        Object.keys(hierarchy).forEach(layerKey => {
+            hierarchy[layerKey].forEach(node => {
+                node.x = layerKey * layerSpacing + 100;
+            });
+        });
+
+        const finalYOffset = yOffset + index * (maxYInHierarchy + 100);
+        Object.keys(hierarchy).forEach(layerKey => {
+            hierarchy[layerKey].forEach(node => {
+                node.y += finalYOffset;
+            });
+        });
+    });
+
+    const link = g.append("g")
+        .attr("class", "links")
+        .selectAll("line")
+        .data(graph.links)
+        .enter().append("line")
+        .attr("class", "link");
+
+    const node = g.append("g")
+        .attr("class", "nodes")
+        .selectAll("g")
+        .data(graph.nodes)
+        .enter().append("g")
+        .attr("transform", d => `translate(${d.x},${d.y})`)
+        .call(d3.drag()
+            .on("drag", dragged))
+        .on("click", (event, d) => showNodeDetails(d));
+
+    node.append("circle")
+        .attr("r", nodeRadius);
+
+    node.append("text")
+        .attr("dx", ".35em")
+        .text(d => d.label);
+
+    updateLinkPositions();
+
+    function updateLinkPositions() {
+        link.attr("x1", d => d.source.x)
+            .attr("y1", d => d.source.y)
+            .attr("x2", d => d.target.x)
+            .attr("y2", d => d.target.y);
+    }
+
+    function dragged(event, d) {
+        d.x = event.x;
+        d.y = event.y;
+        d3.select(this).attr("transform", `translate(${d.x},${d.y})`);
+        updateLinkPositions();
+    }
+
+    const zoom = d3.zoom()
+        .scaleExtent([0.1, 10])
+        .on("zoom", zoomed);
 
     svg.call(zoom);
 
     function zoomed(event) {
         g.attr("transform", event.transform);
-        updateZoomLevelDisplay(event.transform.k);
     }
+}
 
-    function loadGraph() {
-        const inputJson = document.getElementById('jsonInput').value;
-        const fileInput = document.getElementById('jsonFile');
+function buildHierarchy(rootNode, links) {
+    let hierarchy = {};
+    function traverse(node, depth = 0) {
+        if (!hierarchy[depth]) hierarchy[depth] = [];
+        hierarchy[depth].push(node);
+        links.filter(link => link.source.id === node.id)
+             .forEach(link => traverse(link.target, depth + 1));
+    }
+    traverse(rootNode);
+    return hierarchy;
+}
 
-        if (inputJson) {
-            visualize(JSON.parse(inputJson));
-        } else if (fileInput.files.length > 0) {
-            const formData = new FormData();
-            formData.append('file', fileInput.files[0]);
+function showNodeDetails(node) {
+    selectedNode = node;
+    const detailsDiv = document.getElementById('nodeDetails');
+    detailsDiv.innerHTML = `
+        <p><strong>ID:</strong> ${node.id}</p>
+        <p><strong>Label:</strong> <input type="text" id="labelInput" value="${node.label}"/></p>
+        <p><strong>Group:</strong> ${node.group}</p>
+        <p><strong>Parent:</strong> ${getParentLabel(node)}</p>
+        <p><strong>Children:</strong> ${getChildrenLabels(node)}</p>
+    `;
+    document.getElementById('sidebar').style.display = 'block';
+}
 
-            fetch('/upload', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => visualize(data));
+function getParentLabel(node) {
+    const parentLink = graph.links.find(link => link.target.id === node.id);
+    return parentLink ? findNodeById(parentLink.source.id).label : 'None';
+}
+
+function getChildrenLabels(node) {
+    return graph.links.filter(link => link.source.id === node.id)
+                      .map(link => findNodeById(link.target.id).label)
+                      .join(', ');
+}
+
+function findNodeById(id) {
+    return graph.nodes.find(node => node.id === id);
+}
+
+function downloadGraph() {
+    // 构建新的JSON对象
+    const rootNode = buildJsonFromGraph(graph);
+
+    // 将对象转换为JSON字符串
+    let jsonString = JSON.stringify(rootNode, null, 2);
+
+    // 解析JSON字符串以便处理
+    let jsonObj = JSON.parse(jsonString);
+
+    // 处理JSON对象，将最终指向null的字典改为该字典的键
+    function flattenNullDicts(obj) {
+        if (typeof obj !== 'object' || obj === null) return obj;
+        for (let key of Object.keys(obj)) {
+            if (obj[key] && typeof obj[key] === 'object' &&
+                Object.values(obj[key]).every(val => val === null)) {
+                // 如果字典的所有值都是null，则用该字典的所有键替换（通常是一个）
+                const newKeys = Object.keys(obj[key]);
+                obj[key] = newKeys.length === 1 ? newKeys[0] : newKeys;
+            } else if (typeof obj[key] === 'object') {
+                flattenNullDicts(obj[key]);
+            }
         }
     }
 
-    function visualize(graph) {
-        // 清除现有图形
-        svg.selectAll("*").remove();
-        const g = svg.append("g");
+    flattenNullDicts(jsonObj);
 
-        const link = g.append("g")
-            .attr("class", "links")
-            .selectAll("line")
-            .data(graph.links)
-            .enter().append("line")
-            .attr("class", "link");
+    // 将处理后的对象转回JSON字符串
+    jsonString = JSON.stringify(jsonObj, null, 2);
 
-        const node = g.append("g")
-            .attr("class", "nodes")
-            .selectAll("g")
-            .data(graph.nodes)
-            .enter().append("g")
-            .attr("class", "node")
-            .call(drag());
+    // 创建一个Blob对象
+    const blob = new Blob([jsonString], { type: 'application/json' });
 
-        node.append("circle")
-            .attr("r", 10);
+    // 创建一个隐藏的a元素用于触发下载
+    const a = document.createElement('a');
+    a.style.display = 'none';
+    a.href = URL.createObjectURL(blob);
+    a.download = 'graph.json';
 
-        node.append("text")
-            .attr("dx", 12)
-            .attr("dy", ".35em")
-            .text(d => d.label);
+    // 将a元素添加到DOM中
+    document.body.appendChild(a);
 
-        const simulation = d3.forceSimulation(graph.nodes)
-            .force("link", d3.forceLink(graph.links).id(d => d.id).distance(150))
-            .force("charge", d3.forceManyBody().strength(-10))
-            .force("center", d3.forceCenter(width / 2, height / 2));
+    // 触发点击事件进行下载
+    a.click();
 
-        simulation.on("tick", () => {
-            link
-                .attr("x1", d => d.source.x)
-                .attr("y1", d => d.source.y)
-                .attr("x2", d => d.target.x)
-                .attr("y2", d => d.target.y);
+    // 移除a元素
+    document.body.removeChild(a);
+}
+function buildJsonFromGraph(graph) {
+    const rootNodes = graph.nodes.filter(node => !graph.links.some(link => link.target.id === node.id));
+    const rootNode = {};
 
-            node
-                .attr("transform", d => `translate(${d.x},${d.y})`);
+    rootNodes.forEach(rootNodeItem => {
+        const key = rootNodeItem.label;
+        const subTree = buildSubtree(rootNodeItem, graph.links, graph.nodes);
+        if (subTree !== undefined && Object.keys(subTree).length > 0) {
+            rootNode[key] = subTree;
+        }
+    });
+
+    return rootNode;
+
+    function buildSubtree(node, links, nodes) {
+        const childrenLinks = links.filter(link => link.source.id === node.id);
+        if (childrenLinks.length === 0) return undefined; // 如果没有子节点，返回undefined
+
+        const subtree = {};
+        childrenLinks.forEach(link => {
+            const childNode = nodes.find(n => n.id === link.target.id);
+            const childKey = childNode.label;
+            const childSubtree = buildSubtree(childNode, links, nodes);
+            if (childSubtree !== undefined) {
+                if (subtree[childKey]) {
+                    // 如果键已存在，检查其是否为数组，如果不是则转换为数组
+                    if (!Array.isArray(subtree[childKey])) {
+                        subtree[childKey] = [subtree[childKey]];
+                    }
+                    subtree[childKey].push(childSubtree);
+                } else {
+                    subtree[childKey] = childSubtree;
+                }
+            } else {
+                subtree[childKey] = null; // 标记无子节点但存在的节点
+            }
         });
 
-        function drag() {
-            function dragstarted(event, d) {
-                if (!event.active) simulation.alphaTarget(0.3).restart();
-                d.fx = d.x;
-                d.fy = d.y;
-            }
-
-            function dragged(event, d) {
-                d.fx = event.x;
-                d.fy = event.y;
-            }
-
-            function dragended(event, d) {
-                if (!event.active) simulation.alphaTarget(0);
-                d.fx = null;
-                d.fy = null;
-            }
-
-            return d3.drag()
-                .on("start", dragstarted)
-                .on("drag", dragged)
-                .on("end", dragended);
-        }
+        return subtree;
     }
-
-    function zoomBy(factor) {
-        const newScale = currentScale * factor;
-        const transform = d3.zoomIdentity.translate(width / 2, height / 2)
-            .scale(newScale)
-            .translate(-width / 2, -height / 2);
-        svg.transition().duration(750).call(zoom.transform, transform);
-        currentScale = newScale;
-        document.getElementById('zoomSlider').value = newScale;
-        updateZoomLevelDisplay(newScale);
-    }
-
-    function updateZoom(value) {
-        const scale = parseFloat(value);
-        const transform = d3.zoomIdentity.translate(width / 2, height / 2)
-            .scale(scale)
-            .translate(-width / 2, -height / 2);
-        svg.transition().duration(750).call(zoom.transform, transform);
-        currentScale = scale;
-        updateZoomLevelDisplay(scale);
-    }
-
-    function updateZoomLevelDisplay(scale) {
-        document.getElementById('zoomLevel').textContent = `${scale.toFixed(2)}x`;
-    }
+}
 </script>
 </body>
 </html>
