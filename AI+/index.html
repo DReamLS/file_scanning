@@ -245,6 +245,14 @@ function findNodeById(id) {
     return graph.nodes.find(node => node.id === id);
 }
 
+function submitChanges() {
+    const labelInput = document.getElementById('labelInput');
+    if (selectedNode && labelInput.value) {
+        selectedNode.label = labelInput.value;
+        renderGraph(graph); // 重新渲染图谱以显示更改
+    }
+}
+
 function downloadGraph() {
     // 构建新的JSON对象
     const rootNode = buildJsonFromGraph(graph);
@@ -293,6 +301,7 @@ function downloadGraph() {
     // 移除a元素
     document.body.removeChild(a);
 }
+
 function buildJsonFromGraph(graph) {
     const rootNodes = graph.nodes.filter(node => !graph.links.some(link => link.target.id === node.id));
     const rootNode = {};
