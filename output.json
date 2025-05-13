@@ -1,163 +1,163 @@
 {
-    "个人简历": {
-        "何年何月": [
-            "2008 行：290，列：106",
-            "2010 行：308，列：106",
-            "2022 行：325，列：106",
-            "none 行：346，列：106",
-            "none 行：377，列：106",
-            "none 行：396，列：106",
-            "none 行：414，列：106",
-            "none 行：433，列：106",
-            "none 行：452，列：106",
-            "none 行：471，列：106",
-            "none 行：490，列：106"
+    "\u201c\u6587\u9769\u201d\u671f\u95f4\u548c\u516b\u4e5d\u653f\u6cbb\u98ce\u6ce2\u671f\u95f4\u8868\u73b0": [
+        "\u65e0 \u884c\uff1a250\uff0c\u5217\uff1a168"
+    ],
+    "\u4e0a\u7ea7\u515a\u59d4\u5907\u6848\u60c5\u51b5": [
+        "\u5907\u5b8c\u6848\u4e01 \u884c\uff1a258\uff0c\u5217\uff1a107"
+    ],
+    "\u4e2a\u4eba\u7b80\u5386": {
+        "\u4f55\u5355\u4f4d\u6216\u90e8\u95e8\u4efb\u4f55\u804c\u52a1\uff08\u5305\u62ec\u5b66\u4e60\uff09": [
+            "\u5e7c\u513f\u56ed\u597d\u5b69\u5b50 \u884c\uff1a290\uff0c\u5217\uff1a197",
+            "\u5c0f\u5b66\u5b66\u751f \u884c\uff1a308\uff0c\u5217\uff1a197",
+            "\u9ad8\u4e2d\u73ed\u5e72\u90e8 \u884c\uff1a325\uff0c\u5217\uff1a197",
+            "none \u884c\uff1a346\uff0c\u5217\uff1a197",
+            "none \u884c\uff1a377\uff0c\u5217\uff1a197",
+            "none \u884c\uff1a396\uff0c\u5217\uff1a197",
+            "none \u884c\uff1a414\uff0c\u5217\uff1a197",
+            "none \u884c\uff1a433\uff0c\u5217\uff1a197",
+            "none \u884c\uff1a452\uff0c\u5217\uff1a197",
+            "none \u884c\uff1a490\uff0c\u5217\uff1a197"
         ],
-        "何单位或部门任何职务（包括学习）": [
-            "幼儿园好孩子 行：290，列：197",
-            "小学学生 行：308，列：197",
-            "高中班干部 行：325，列：197",
-            "none 行：346，列：197",
-            "none 行：377，列：197",
-            "none 行：396，列：197",
-            "none 行：414，列：197",
-            "none 行：433，列：197",
-            "none 行：452，列：197",
-            "none 行：490，列：197"
+        "\u4f55\u5e74\u4f55\u6708": [
+            "2008 \u884c\uff1a290\uff0c\u5217\uff1a106",
+            "2010 \u884c\uff1a308\uff0c\u5217\uff1a106",
+            "2022 \u884c\uff1a325\uff0c\u5217\uff1a106",
+            "none \u884c\uff1a346\uff0c\u5217\uff1a106",
+            "none \u884c\uff1a377\uff0c\u5217\uff1a106",
+            "none \u884c\uff1a396\uff0c\u5217\uff1a106",
+            "none \u884c\uff1a414\uff0c\u5217\uff1a106",
+            "none \u884c\uff1a433\uff0c\u5217\uff1a106",
+            "none \u884c\uff1a452\uff0c\u5217\uff1a106",
+            "none \u884c\uff1a471\uff0c\u5217\uff1a106",
+            "none \u884c\uff1a490\uff0c\u5217\uff1a106"
         ],
-        "证明人": [
-            "李老师 行：290，列：478",
-            "陈老师 行：308，列：478",
-            "王五 行：325，列：478",
-            "none 行：346，列：478",
-            "none 行：377，列：478",
-            "none 行：396，列：478",
-            "none 行：414，列：478",
-            "none 行：433，列：478",
-            "none 行：452，列：478",
-            "none 行：471，列：478",
-            "none 行：490，列：478"
+        "\u8bc1\u660e\u4eba": [
+            "\u674e\u8001\u5e08 \u884c\uff1a290\uff0c\u5217\uff1a478",
+            "\u9648\u8001\u5e08 \u884c\uff1a308\uff0c\u5217\uff1a478",
+            "\u738b\u4e94 \u884c\uff1a325\uff0c\u5217\uff1a478",
+            "none \u884c\uff1a346\uff0c\u5217\uff1a478",
+            "none \u884c\uff1a377\uff0c\u5217\uff1a478",
+            "none \u884c\uff1a396\uff0c\u5217\uff1a478",
+            "none \u884c\uff1a414\uff0c\u5217\uff1a478",
+            "none \u884c\uff1a433\uff0c\u5217\uff1a478",
+            "none \u884c\uff1a452\uff0c\u5217\uff1a478",
+            "none \u884c\uff1a471\uff0c\u5217\uff1a478",
+            "none \u884c\uff1a490\uff0c\u5217\uff1a478"
         ]
     },
-    "奖惩情况": [
-        "无大奖大过情况 行：509，列：106"
+    "\u515a\u5458\u63a8\u8350\u60c5\u51b5": [
+        "\u4f19\u826f\u4f5c\u98ce\uff0c\u5927\u529b\u63a8\u8350 \u884c\uff1a435\uff0c\u5217\uff1a107"
     ],
-    "姓名": [
-        "张三 行：54，列：142"
+    "\u515a\u7ec4\u7ec7\u6d3e\u4eba\u8c08\u8bdd\u60c5\u51b5": [
+        "\u5f88\u597d \u884c\uff1a328\uff0c\u5217\uff1a107"
     ],
-    "籍贯": [
-        "山东 行：85，列：142"
+    "\u5165\u515a\u79ef\u6781\u5206\u5b50\u57f9\u8bad\u60c5\u51b5": [
+        "2024.2.2 \u884c\uff1a633\uff0c\u5217\uff1a153",
+        "\u901a\u8fc7 \u884c\uff1a633\uff0c\u5217\uff1a378"
     ],
-    "单位、职务或职业": [
-        "none 行：117，列：197"
+    "\u5165\u515a\u79ef\u6781\u5206\u5b50\u601d\u60f3\u6c47\u62a5\u65f6\u95f4": [
+        "2024.1.2 \u884c\uff1a537\uff0c\u5217\uff1a153",
+        "none \u884c\uff1a553\uff0c\u5217\uff1a153",
+        "none \u884c\uff1a569\uff0c\u5217\uff1a153",
+        "none \u884c\uff1a585\uff0c\u5217\uff1a153",
+        "none \u884c\uff1a537\uff0c\u5217\uff1a327",
+        "none \u884c\uff1a553\uff0c\u5217\uff1a327",
+        "none \u884c\uff1a569\uff0c\u5217\uff1a327",
+        "none \u884c\uff1a585\uff0c\u5217\uff1a327"
     ],
-    "家庭地址(精确到室)": [
-        "阳光市幸福小区201 行：140，列：197"
+    "\u5165\u56e2\u65f6\u95f4": [
+        "none \u884c\uff1a187\uff0c\u5217\uff1a197"
     ],
-    "居民身份证号": [
-        "1234567890 行：164，列：197"
+    "\u51fa\u751f\u5e74\u6708": [
+        "2006.7.1 \u884c\uff1a54\uff0c\u5217\uff1a478"
     ],
-    "入团时间": [
-        "none 行：187，列：197"
+    "\u5355\u4f4d\u3001\u804c\u52a1\u6216\u804c\u4e1a": [
+        "none \u884c\uff1a117\uff0c\u5217\uff1a197"
     ],
-    "申请入党时间": [
-        "none 行：211，列：197"
-    ],
-    "确定为入党积极分子时间": [
-        "none 行：234，列：197"
-    ],
-    "培养联系人": {
-        "所在党支部及职务": [
-            "none 行：471，列：197",
-            "币党委主任 行：417，列：197",
-            "区党委主席 行：444，列：197",
-            "none 行：487，列：197",
-            "none 行：501，列：197",
-            "none 行：519，列：197"
+    "\u57f9\u517b\u8054\u7cfb\u4eba": {
+        "\u5165\u515a\u65f6\u95f4": [
+            "2024.1.1 \u884c\uff1a417\uff0c\u5217\uff1a396",
+            "2024.1.1 \u884c\uff1a444\uff0c\u5217\uff1a396",
+            "none \u884c\uff1a471\uff0c\u5217\uff1a396",
+            "none \u884c\uff1a487\uff0c\u5217\uff1a396",
+            "none \u884c\uff1a501\uff0c\u5217\uff1a396",
+            "none \u884c\uff1a519\uff0c\u5217\uff1a396"
         ],
-        "姓名": [
-            "小王 行：417，列：107",
-            "小李 行：444，列：107",
-            "none 行：471，列：107",
-            "none 行：487，列：107",
-            "none 行：501，列：107",
-            "none 行：519，列：107"
+        "\u59d3\u540d": [
+            "\u5c0f\u738b \u884c\uff1a417\uff0c\u5217\uff1a107",
+            "\u5c0f\u674e \u884c\uff1a444\uff0c\u5217\uff1a107",
+            "none \u884c\uff1a471\uff0c\u5217\uff1a107",
+            "none \u884c\uff1a487\uff0c\u5217\uff1a107",
+            "none \u884c\uff1a501\uff0c\u5217\uff1a107",
+            "none \u884c\uff1a519\uff0c\u5217\uff1a107"
         ],
-        "入党时间": [
-            "2024.1.1 行：417，列：396",
-            "2024.1.1 行：444，列：396",
-            "none 行：471，列：396",
-            "none 行：487，列：396",
-            "none 行：501，列：396",
-            "none 行：519，列：396"
+        "\u6240\u5728\u515a\u652f\u90e8\u53ca\u804c\u52a1": [
+            "none \u884c\uff1a471\uff0c\u5217\uff1a197",
+            "\u5e01\u515a\u59d4\u4e3b\u4efb \u884c\uff1a417\uff0c\u5217\uff1a197",
+            "\u533a\u515a\u59d4\u4e3b\u5e2d \u884c\uff1a444\uff0c\u5217\uff1a197",
+            "none \u884c\uff1a487\uff0c\u5217\uff1a197",
+            "none \u884c\uff1a501\uff0c\u5217\uff1a197",
+            "none \u884c\uff1a519\uff0c\u5217\uff1a197"
         ]
     },
-    "性别": [
-        "男 行：54，列：233"
+    "\u57f9\u8bad\u7ed3\u4e1a\u65f6\u95f4": [
+        "2024.2.2 \u884c\uff1a633\uff0c\u5217\uff1a153"
     ],
-    "学历": [
-        "none 行：85，列：233"
+    "\u5956\u60e9\u60c5\u51b5": [
+        "\u65e0\u5927\u5956\u5927\u8fc7\u60c5\u51b5 \u884c\uff1a509\uff0c\u5217\uff1a106"
     ],
-    "民族": [
-        "汉族 行：54，列：355"
+    "\u59d3\u540d": [
+        "\u5f20\u4e09 \u884c\uff1a54\uff0c\u5217\uff1a142"
     ],
-    "学位": [
-        "none 行：85，列：355"
+    "\u5b66\u4f4d": [
+        "none \u884c\uff1a85\uff0c\u5217\uff1a355"
     ],
-    "出生年月": [
-        "2006.7.1 行：54，列：478"
+    "\u5b66\u5386": [
+        "none \u884c\uff1a85\uff0c\u5217\uff1a233"
     ],
-    "职称": [
-        "none 行：85，列：478"
+    "\u5bb6\u5ead\u4e3b\u8981\u6210\u5458\u548c\u4e3b\u8981\u793e\u4f1a\u5173\u7cfb\u59d3\u540d\u3001\u804c\u4e1a\u3001\u653f\u6cbb\u9762\u8c8c": [
+        "\u5f20\u56db\u7236\u5b50\u804c\u4e1a\u5171\u4ea7\u515a\u5458 \u884c\uff1a54\uff0c\u5217\uff1a100"
     ],
-    "家庭主要成员和主要社会关系姓名、职业、政治面貌": [
-        "张四父子职业共产党员 行：54，列：100"
+    "\u5bb6\u5ead\u5730\u5740(\u7cbe\u786e\u5230\u5ba4)": [
+        "\u9633\u5149\u5e02\u5e78\u798f\u5c0f\u533a201 \u884c\uff1a140\uff0c\u5217\uff1a197"
     ],
-    "党组织派人谈话情况": [
-        "很好 行：328，列：107"
+    "\u5c45\u6c11\u8eab\u4efd\u8bc1\u53f7": [
+        "1234567890 \u884c\uff1a164\uff0c\u5217\uff1a197"
     ],
-    "党员推荐情况": [
-        "伙良作风，大力推荐 行：435，列：107"
+    "\u6027\u522b": [
+        "\u7537 \u884c\uff1a54\uff0c\u5217\uff1a233"
     ],
-    "群团组织推优情况": [
-        "群团组织负责人签名 行：540，列：107"
+    "\u662f\u5426\u53c2\u52a0\u8fc7\u6cd5\u8f6e\u529f\u7b49\u90aa\u6559\u7ec4\u7ec7": [
+        "\u65e0 \u884c\uff1a294\uff0c\u5217\uff1a168"
     ],
-    "本人有何政治历史问题、结论如何": [
-        "无 行：203，列：168"
+    "\u672c\u4eba\u6709\u4f55\u653f\u6cbb\u5386\u53f2\u95ee\u9898\u3001\u7ed3\u8bba\u5982\u4f55": [
+        "\u65e0 \u884c\uff1a203\uff0c\u5217\uff1a168"
     ],
-    "“文革”期间和八九政治风波期间表现": [
-        "无 行：250，列：168"
+    "\u6c11\u65cf": [
+        "\u6c49\u65cf \u884c\uff1a54\uff0c\u5217\uff1a355"
     ],
-    "是否参加过法轮功等邪教组织": [
-        "无 行：294，列：168"
+    "\u7533\u8bf7\u5165\u515a\u65f6\u95f4": [
+        "none \u884c\uff1a211\uff0c\u5217\uff1a197"
     ],
-    "确定为入党积极分子党小组意见": [
-        "非常好 行：54，列：107"
+    "\u786e\u5b9a\u4e3a\u5165\u515a\u79ef\u6781\u5206\u5b50\u515a\u5c0f\u7ec4\u610f\u89c1": [
+        "\u975e\u5e38\u597d \u884c\uff1a54\uff0c\u5217\uff1a107"
     ],
-    "确定为入党积极分子党支部意见": [
-        "通过 行：162，列：107"
+    "\u786e\u5b9a\u4e3a\u5165\u515a\u79ef\u6781\u5206\u5b50\u515a\u652f\u90e8\u610f\u89c1": [
+        "\u901a\u8fc7 \u884c\uff1a162\uff0c\u5217\uff1a107"
     ],
-    "上级党委备案情况": [
-        "备完案丁 行：258，列：107"
+    "\u786e\u5b9a\u4e3a\u5165\u515a\u79ef\u6781\u5206\u5b50\u65f6\u95f4": [
+        "none \u884c\uff1a234\uff0c\u5217\uff1a197"
     ],
-    "入党积极分子思想汇报时间": [
-        "2024.1.2 行：537，列：153",
-        "none 行：553，列：153",
-        "none 行：569，列：153",
-        "none 行：585，列：153",
-        "none 行：537，列：327",
-        "none 行：553，列：327",
-        "none 行：569，列：327",
-        "none 行：585，列：327"
+    "\u7c4d\u8d2f": [
+        "\u5c71\u4e1c \u884c\uff1a85\uff0c\u5217\uff1a142"
     ],
-    "入党积极分子培训情况": [
-        "2024.2.2 行：633，列：153",
-        "通过 行：633，列：378"
+    "\u7fa4\u56e2\u7ec4\u7ec7\u63a8\u4f18\u60c5\u51b5": [
+        "\u7fa4\u56e2\u7ec4\u7ec7\u8d1f\u8d23\u4eba\u7b7e\u540d \u884c\uff1a540\uff0c\u5217\uff1a107"
     ],
-    "培训结业时间": [
-        "2024.2.2 行：633，列：153"
+    "\u8003\u6838\u7ed3\u679c": [
+        "\u901a\u8fc7 \u884c\uff1a633\uff0c\u5217\uff1a378"
     ],
-    "考核结果": [
-        "通过 行：633，列：378"
+    "\u804c\u79f0": [
+        "none \u884c\uff1a85\uff0c\u5217\uff1a478"
     ]
 }

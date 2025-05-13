@@ -4,67 +4,502 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>文件上传处理器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3b82f6',
+                        secondary: '#64748b',
+                        accent: '#0ea5e9',
+                        neutral: '#64748b',
+                        'neutral-light': '#f1f5f9',
+                        'neutral-dark': '#1e293b',
+                        success: '#10b981',
+                        error: '#ef4444',
+                    },
+                    fontFamily: {
+                        inter: ['Inter', 'sans-serif'],
+                    },
+                    boxShadow: {
+                        'card': '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+                        'hover': '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+                    }
+                },
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .nav-bar-container {
+                background: linear-gradient(90deg, #3b82f6 0%, #0ea5e9 100%);
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            }
+            .nav-item {
+                padding: 1rem 2rem;
+                color: white;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                position: relative;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+            }
+            .nav-item.active {
+                background-color: rgba(255, 255, 255, 0.15);
+            }
+            .nav-item:hover:not(.active) {
+                background-color: rgba(255, 255, 255, 0.1);
+            }
+            .active-indicator {
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                width: 100%;
+                height: 3px;
+                background-color: white;
+                transform: scaleX(0);
+                transition: transform 0.3s ease;
+            }
+            .nav-item.active .active-indicator {
+                transform: scaleX(1);
+            }
+            .upload-button {
+                background-color: #3b82f6;
+                color: white;
+                padding: 0.75rem 1.5rem;
+                border-radius: 0.5rem;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                display: inline-flex;
+                align-items: center;
+                font-weight: 500;
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            }
+            .upload-button:hover {
+                background-color: #2563eb;
+                transform: translateY(-2px);
+                box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            }
+            .display-area {
+                border: 2px dashed #cbd5e1;
+                border-radius: 0.75rem;
+                background-color: #f8fafc;
+                transition: all 0.3s ease;
+                position: relative;
+                overflow: hidden;
+            }
+            .display-area.has-content {
+                border-color: #3b82f6;
+                background-color: #f0f9ff;
+            }
+            .action-button {
+                padding: 0.75rem 1.5rem;
+                border-radius: 0.5rem;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                display: inline-flex;
+                align-items: center;
+                font-weight: 500;
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            }
+            .primary-button {
+                background-color: #3b82f6;
+                color: white;
+            }
+            .primary-button:hover {
+                background-color: #2563eb;
+                transform: translateY(-2px);
+                box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            }
+            .file-icon {
+                color: #3b82f6;
+                opacity: 0.7;
+            }
+            .text-gray {
+                color: #64748b;
+            }
+            .pdf-preview {
+                background: url('https://picsum.photos/800/400') center/cover no-repeat;
+                position: relative;
+            }
+            .pdf-preview::after {
+                content: 'PDF预览';
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                width: 100%;
+                background-color: rgba(0, 0, 0, 0.5);
+                color: white;
+                text-align: center;
+                padding: 0.25rem;
+                font-size: 0.875rem;
+            }
+        }
+    </style>
 </head>
-<body>
-    <h1>文件上传处理器</h1>
-    <div id="options">
-        <button onclick="selectOption('option1')">电子模板</button>
-        <button onclick="selectOption('option2')">扫描模板</button>
-        <button onclick="selectOption('option3')">无模板</button>
-    </div>
-    <div id="option1" style="display:none;">
-        <form enctype="multipart/form-data">
-            <label for="templateFile1">上传电子模板文件 (PDF):</label>
-            <input type="file" id="templateFile1" name="templateFile1" accept=".pdf" required>
-            <label for="scanFile1">上传扫描文件 (PDF):</label>
-            <input type="file" id="scanFile1" name="scanFile1" accept=".pdf" required>
-            <button type="button" onclick="processFiles('process1', 'templateFile1', 'scanFile1')">处理</button>
-        </form>
-    </div>
-    <div id="option2" style="display:none;">
-        <form enctype="multipart/form-data">
-            <label for="templateFile2">上传扫描模板文件 (PDF):</label>
-            <input type="file" id="templateFile2" name="templateFile2" accept=".pdf" required>
-            <label for="scanFile2">上传扫描文件 (PDF):</label>
-            <input type="file" id="scanFile2" name="scanFile2" accept=".pdf" required>
-            <button type="button" onclick="processFiles('process2', 'templateFile2', 'scanFile2')">处理</button>
-        </form>
-    </div>
-    <div id="option3" style="display:none;">
-        <form enctype="multipart/form-data">
-            <label for="scanFileOnly">上传文件 (PDF):</label>
-            <input type="file" id="scanFileOnly" name="scanFileOnly" accept=".pdf" required>
-            <button type="button" onclick="processFiles('process3', null, 'scanFileOnly')">处理</button>
-        </form>
+<body class="font-inter bg-gray-50 min-h-screen flex flex-col">
+    <!-- 导航栏 -->
+    <div class="nav-bar-container">
+        <nav class="bg-transparent">
+            <div class="container mx-auto">
+                <div class="flex justify-start items-center flex-wrap">
+                    <div class="nav-item active" data-target="electronic" onclick="selectOption('option1')">
+                        <div class="icon-wrapper mb-1">
+                            <i class="fa-solid fa-file-pdf text-xl"></i>
+                        </div>
+                        电子模板
+                        <div class="active-indicator"></div>
+                    </div>
+                    <div class="nav-item" data-target="scan" onclick="selectOption('option2')">
+                        <div class="icon-wrapper mb-1">
+                            <i class="fa-solid fa-scanner text-xl"></i>
+                        </div>
+                        扫描模板
+                        <div class="active-indicator"></div>
+                    </div>
+                    <div class="nav-item" data-target="notemplate" onclick="selectOption('option3')">
+                        <div class="icon-wrapper mb-1">
+                            <i class="fa-solid fa-file text-xl"></i>
+                        </div>
+                        无模板
+                        <div class="active-indicator"></div>
+                    </div>
+                </div>
+            </div>
+        </nav>
     </div>
 
-    <div id="result" style="margin-top: 20px; display: none;">
-        <h3>处理结果:</h3>
-        <pre id="jsonPreview"></pre>
-        <a id="downloadLink" href="/download" style="display: none;">下载 JSON</a>
+    <!-- 内容区域 -->
+    <div class="flex-1 container mx-auto py-6 px-4 md:px-8">
+        <div class="mb-8">
+            <h1 class="text-[clamp(1.5rem,3vw,2.5rem)] font-bold text-neutral-dark mb-2">文件上传处理器</h1>
+            <p class="text-neutral">选择处理模式并上传相关文件进行处理</p>
+        </div>
+
+        <!-- 选项卡内容 -->
+        <div id="option1" class="bg-white rounded-xl shadow-card p-6 mb-6 transition-all duration-300 transform opacity-100">
+            <div class="flex flex-col md:flex-row gap-8">
+                <div class="w-full md:w-1/2">
+                    <h3 class="text-lg font-semibold text-primary mb-4">上传电子模板文件 (PDF)</h3>
+                    <div class="upload-button mb-3" id="templateFile1Btn">
+                        <i class="fa-solid fa-file-import mr-2"></i>
+                        选择文件
+                    </div>
+                    <input type="file" id="templateFile1" name="templateFile1" accept=".pdf" required class="hidden">
+                    <div class="display-area h-[200px]" id="templateFile1Preview">
+                        <div class="file-preview w-full h-full flex items-center justify-center flex-col">
+                            <i class="fa-solid fa-file-pdf h-16 w-16 mb-4 file-icon"></i>
+                            <p class="text-gray text-center">点击上方按钮上传文件</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="w-full md:w-1/2">
+                    <h3 class="text-lg font-semibold text-primary mb-4">上传扫描文件 (PDF)</h3>
+                    <div class="upload-button mb-3" id="scanFile1Btn">
+                        <i class="fa-solid fa-file-import mr-2"></i>
+                        选择文件
+                    </div>
+                    <input type="file" id="scanFile1" name="scanFile1" accept=".pdf" required class="hidden">
+                    <div class="display-area h-[200px]" id="scanFile1Preview">
+                        <div class="file-preview w-full h-full flex items-center justify-center flex-col">
+                            <i class="fa-solid fa-file-pdf h-16 w-16 mb-4 file-icon"></i>
+                            <p class="text-gray text-center">点击上方按钮上传文件</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-6 text-center">
+                <button type="button" onclick="processFiles('process1', 'templateFile1', 'scanFile1')" class="action-button primary-button py-3 px-8 text-lg">
+                    <i class="fa-solid fa-cog mr-2"></i>
+                    处理文件
+                </button>
+            </div>
+        </div>
+
+        <div id="option2" class="bg-white rounded-xl shadow-card p-6 mb-6 transition-all duration-300 hidden">
+            <div class="flex flex-col md:flex-row gap-8">
+                <div class="w-full md:w-1/2">
+                    <h3 class="text-lg font-semibold text-primary mb-4">上传扫描模板文件 (PDF)</h3>
+                    <div class="upload-button mb-3" id="templateFile2Btn">
+                        <i class="fa-solid fa-file-import mr-2"></i>
+                        选择文件
+                    </div>
+                    <input type="file" id="templateFile2" name="templateFile2" accept=".pdf" required class="hidden">
+                    <div class="display-area h-[200px]" id="templateFile2Preview">
+                        <div class="file-preview w-full h-full flex items-center justify-center flex-col">
+                            <i class="fa-solid fa-file-pdf h-16 w-16 mb-4 file-icon"></i>
+                            <p class="text-gray text-center">点击上方按钮上传文件</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="w-full md:w-1/2">
+                    <h3 class="text-lg font-semibold text-primary mb-4">上传扫描文件 (PDF)</h3>
+                    <div class="upload-button mb-3" id="scanFile2Btn">
+                        <i class="fa-solid fa-file-import mr-2"></i>
+                        选择文件
+                    </div>
+                    <input type="file" id="scanFile2" name="scanFile2" accept=".pdf" required class="hidden">
+                    <div class="display-area h-[200px]" id="scanFile2Preview">
+                        <div class="file-preview w-full h-full flex items-center justify-center flex-col">
+                            <i class="fa-solid fa-file-pdf h-16 w-16 mb-4 file-icon"></i>
+                            <p class="text-gray text-center">点击上方按钮上传文件</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-6 text-center">
+                <button type="button" onclick="processFiles('process2', 'templateFile2', 'scanFile2')" class="action-button primary-button py-3 px-8 text-lg">
+                    <i class="fa-solid fa-cog mr-2"></i>
+                    处理文件
+                </button>
+            </div>
+        </div>
+
+        <div id="option3" class="bg-white rounded-xl shadow-card p-6 mb-6 transition-all duration-300 hidden">
+            <div class="flex flex-col md:flex-row gap-8">
+                <div class="w-full md:w-1/2 mx-auto">
+                    <h3 class="text-lg font-semibold text-primary mb-4">上传文件 (PDF)</h3>
+                    <div class="upload-button mb-3" id="scanFileOnlyBtn">
+                        <i class="fa-solid fa-file-import mr-2"></i>
+                        选择文件
+                    </div>
+                    <input type="file" id="scanFileOnly" name="scanFileOnly" accept=".pdf" required class="hidden">
+                    <div class="display-area h-[200px]" id="scanFileOnlyPreview">
+                        <div class="file-preview w-full h-full flex items-center justify-center flex-col">
+                            <i class="fa-solid fa-file-pdf h-16 w-16 mb-4 file-icon"></i>
+                            <p class="text-gray text-center">点击上方按钮上传文件</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-6 text-center">
+                <button type="button" onclick="processFiles('process3', null, 'scanFileOnly')" class="action-button primary-button py-3 px-8 text-lg">
+                    <i class="fa-solid fa-cog mr-2"></i>
+                    处理文件
+                </button>
+            </div>
+        </div>
+
+        <!-- 结果显示区域 -->
+        <div id="result" class="bg-white rounded-xl shadow-card p-6 mb-6 transition-all duration-300 hidden">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-xl font-bold text-primary flex items-center">
+                    <i class="fa-solid fa-check-circle mr-2"></i>处理结果
+                </h3>
+                <div class="flex gap-2">
+                    <button id="closeResult" class="text-neutral hover:text-neutral-dark transition-colors duration-200">
+                        <i class="fa-solid fa-times"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-neutral-light rounded-lg p-4 overflow-auto max-h-[500px] mb-4">
+                <pre id="jsonPreview" class="text-sm font-mono text-neutral-dark"></pre>
+            </div>
+
+            <div class="flex flex-wrap gap-4 justify-end">
+                <a id="downloadLink" href="/download" class="action-button primary-button hidden">
+                    <i class="fa-solid fa-download mr-2"></i>下载 JSON
+                </a>
+                <button  class="action-button primary-button" onclick="visualizeAndRedirect()">
+                    <i class="fa-solid fa-plus mr-2"></i>可视化修改
+                </button>
+            </div>
+        </div>
+
+        <!-- 加载指示器 -->
+        <div id="loadingIndicator" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
+            <div class="bg-white rounded-xl p-8 max-w-md w-full flex flex-col items-center transform transition-all duration-300 scale-95">
+                <div class="w-16 h-16 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-4"></div>
+                <h3 class="text-xl font-bold text-primary mb-2">正在处理文件</h3>
+                <p class="text-neutral text-center" id="loadingMessage">请稍候，文件处理中...</p>
+            </div>
+        </div>
+
+        <!-- 错误提示框 -->
+        <div id="errorToast" class="fixed bottom-4 right-4 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg transform transition-all duration-500 translate-y-20 opacity-0 z-50 max-w-md">
+            <div class="flex items-start">
+                <i class="fa-solid fa-exclamation-circle mt-1 mr-3 text-xl"></i>
+                <div>
+                    <h4 class="font-bold mb-1">处理错误</h4>
+                    <p id="errorMessage" class="text-sm"></p>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
-        function selectOption(option) {
-            ['option1', 'option2', 'option3'].forEach(opt => document.getElementById(opt).style.display = 'none');
-            document.getElementById(option).style.display = 'block';
+
+        function visualizeAndRedirect() {
+            const jsonData = document.getElementById('jsonPreview').textContent;
+
+            // 使用fetch发送POST请求，并在成功后跳转
+            fetch('/upload', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: jsonData
+            })
+            .then(response => response.json())
+            .then(data => {
+                // 成功上传后跳转到可视化页面
+                window.location.href = '/visualize';
+            })
+            .catch(error => {
+                console.error('Error uploading data:', error);
+            });
         }
 
+        // 选项卡切换
+        function selectOption(option) {
+            // 隐藏所有选项卡内容
+            ['option1', 'option2', 'option3'].forEach(opt => {
+                const element = document.getElementById(opt);
+                element.classList.add('hidden');
+                element.classList.remove('opacity-100');
+                element.classList.add('opacity-0');
+            });
+
+            // 移除所有导航项的激活状态
+            document.querySelectorAll('.nav-item').forEach(nav => {
+                nav.classList.remove('active');
+                nav.querySelector('.active-indicator').style.transform = 'scaleX(0)';
+            });
+
+            // 显示选中的选项卡内容
+            setTimeout(() => {
+                const selectedElement = document.getElementById(option);
+                selectedElement.classList.remove('hidden');
+                setTimeout(() => {
+                    selectedElement.classList.remove('opacity-0');
+                    selectedElement.classList.add('opacity-100');
+                }, 50);
+            }, 300);
+
+            // 设置对应的导航项为激活状态
+            const navItems = {
+                'option1': 'electronic',
+                'option2': 'scan',
+                'option3': 'notemplate'
+            };
+            const activeNav = document.querySelector(`.nav-item[data-target="${navItems[option]}"]`);
+            activeNav.classList.add('active');
+            activeNav.querySelector('.active-indicator').style.transform = 'scaleX(1)';
+
+            // 重置结果区域
+            document.getElementById('result').classList.add('hidden');
+        }
+
+        // 文件预览功能
+        document.addEventListener('DOMContentLoaded', function() {
+            // 初始化显示第一个选项卡
+            selectOption('option1');
+
+            // 设置文件选择按钮事件
+            const fileInputs = [
+                { buttonId: 'templateFile1Btn', inputId: 'templateFile1', previewId: 'templateFile1Preview' },
+                { buttonId: 'scanFile1Btn', inputId: 'scanFile1', previewId: 'scanFile1Preview' },
+                { buttonId: 'templateFile2Btn', inputId: 'templateFile2', previewId: 'templateFile2Preview' },
+                { buttonId: 'scanFile2Btn', inputId: 'scanFile2', previewId: 'scanFile2Preview' },
+                { buttonId: 'scanFileOnlyBtn', inputId: 'scanFileOnly', previewId: 'scanFileOnlyPreview' }
+            ];
+
+            fileInputs.forEach(item => {
+                document.getElementById(item.buttonId).addEventListener('click', function() {
+                    document.getElementById(item.inputId).click();
+                });
+
+                document.getElementById(item.inputId).addEventListener('change', function(e) {
+                    if (e.target.files.length > 0) {
+                        const file = e.target.files[0];
+                        handleFileUpload(file, item.previewId);
+                    }
+                });
+            });
+
+            // 关闭结果区域
+            document.getElementById('closeResult').addEventListener('click', function() {
+                document.getElementById('result').classList.add('hidden');
+            });
+
+
+        });
+
+        // 处理文件上传和预览（替换为新的文件浏览代码）
+        function handleFileUpload(file, previewId) {
+            const previewArea = document.getElementById(previewId);
+
+            // 清空预览区域
+            while (previewArea.firstChild) {
+                previewArea.removeChild(previewArea.firstChild);
+            }
+
+            // 添加文件信息
+            const fileInfo = document.createElement('div');
+            fileInfo.className = 'p-4 bg-primary/5 rounded-lg mb-3';
+            fileInfo.innerHTML = `
+                <div class="font-medium text-primary">${file.name}</div>
+                <div class="text-sm text-gray">${formatFileSize(file.size)}</div>
+            `;
+            previewArea.appendChild(fileInfo);
+
+            // 添加文件预览
+            if (file.type.includes('pdf')) {
+                // 使用iframe实现PDF预览（第二个HTML中的代码）
+                const pdfFrame = document.createElement('iframe');
+                pdfFrame.className = 'pdf-preview w-full h-[120px] rounded-lg shadow-md';
+                pdfFrame.src = URL.createObjectURL(file);
+                pdfFrame.onload = function() {
+                    URL.revokeObjectURL(this.src);
+                };
+                previewArea.appendChild(pdfFrame);
+            } else if (file.type.includes('image')) {
+                // 图片预览
+                const img = document.createElement('img');
+                img.src = URL.createObjectURL(file);
+                img.className = 'max-w-full max-h-[120px] object-contain mx-auto rounded-lg shadow-sm';
+                img.onload = function() {
+                    URL.revokeObjectURL(this.src);
+                };
+                previewArea.appendChild(img);
+            } else {
+                // 其他类型文件 - 使用通用预览
+                const genericPreview = document.createElement('div');
+                genericPreview.className = 'w-full h-[120px] bg-gray-100 rounded-lg flex items-center justify-center';
+                genericPreview.innerHTML = `
+                    <i class="fa-solid fa-file text-gray-400 text-4xl"></i>
+                `;
+                previewArea.appendChild(genericPreview);
+            }
+
+            // 添加has-content类
+            previewArea.classList.add('has-content');
+        }
+
+        // 处理文件上传和处理
         async function processFiles(endpoint, templateFileId, scanFileId) {
             const scanFileInput = scanFileId ? document.getElementById(scanFileId) : null;
             const templateFileInput = templateFileId ? document.getElementById(templateFileId) : null;
 
             if (!scanFileInput.files[0] || (templateFileInput && !templateFileInput.files[0])) {
-                alert('请确保所有必要的文件都已选择。');
+                showError('请确保所有必要的文件都已选择。');
                 return;
             }
 
-            const formData = new FormData();
-            if (scanFileInput) formData.append('scanFile', scanFileInput.files[0]);
-            if (templateFileInput) formData.append('templateFile', templateFileInput.files[0]);
+            // 显示加载指示器
+            showLoading('正在上传和处理文件...');
 
             try {
-                const response = await fetch(`/${endpoint}`, { 
+                const formData = new FormData();
+                if (scanFileInput) formData.append('scanFile', scanFileInput.files[0]);
+                if (templateFileInput) formData.append('templateFile', templateFileInput.files[0]);
+
+                const response = await fetch(`/${endpoint}`, {
                     method: 'POST',
                     body: formData
                 });
@@ -72,21 +507,82 @@
                 if (response.ok) {
                     const jsonResult = await response.json();
                     document.getElementById('jsonPreview').textContent = JSON.stringify(jsonResult, null, 2);
-                    document.getElementById('result').style.display = 'block';
-                    document.getElementById('downloadLink').style.display = 'block';
+                    document.getElementById('result').classList.remove('hidden');
+                    document.getElementById('downloadLink').classList.remove('hidden');
+
+                    // 设置下载链接
+                    const downloadLink = document.getElementById('downloadLink');
+                    const blob = new Blob([JSON.stringify(jsonResult, null, 2)], {type: 'application/json'});
+                    const url = URL.createObjectURL(blob);
+                    downloadLink.href = url;
+                    downloadLink.download = 'processed_data.json';
                 } else {
                     console.error(`HTTP Error: Status Code ${response.status} - ${response.statusText}`);
                     try {
                         const errorData = await response.json();
-                        alert(`处理文件时出错: ${errorData.error} (Status Code: ${response.status})`);
+                        showError(`处理文件时出错: ${errorData.error} (Status Code: ${response.status})`);
                     } catch (parseError) {
-                        alert(`服务器返回错误: Status Code ${response.status} - ${response.statusText}`);
+                        showError(`服务器返回错误: Status Code ${response.status} - ${response.statusText}`);
                     }
                 }
             } catch (error) {
                 console.error(error);
-                alert('上传或处理文件时发生错误，请检查网络连接或文件格式。');
+                showError('上传或处理文件时发生错误，请检查网络连接或文件格式。');
+            } finally {
+                // 隐藏加载指示器
+                hideLoading();
             }
+        }
+
+        // 显示加载指示器
+        function showLoading(message = '请稍候，文件处理中...') {
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            const loadingMessage = document.getElementById('loadingMessage');
+
+            loadingMessage.textContent = message;
+            loadingIndicator.classList.remove('hidden');
+
+            // 添加动画效果
+            setTimeout(() => {
+                loadingIndicator.querySelector('div').classList.remove('scale-95');
+                loadingIndicator.querySelector('div').classList.add('scale-100');
+            }, 10);
+        }
+
+        // 隐藏加载指示器
+        function hideLoading() {
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            loadingIndicator.querySelector('div').classList.remove('scale-100');
+            loadingIndicator.querySelector('div').classList.add('scale-95');
+
+            setTimeout(() => {
+                loadingIndicator.classList.add('hidden');
+            }, 300);
+        }
+
+        // 显示错误提示
+        function showError(message) {
+            const errorToast = document.getElementById('errorToast');
+            const errorMessage = document.getElementById('errorMessage');
+
+            errorMessage.textContent = message;
+            errorToast.classList.remove('translate-y-20', 'opacity-0');
+
+            // 5秒后自动隐藏
+            setTimeout(() => {
+                errorToast.classList.add('translate-y-20', 'opacity-0');
+            }, 5000);
+        }
+
+        // 格式化文件大小
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
         }
     </script>
 </body>

@@ -3,7 +3,7 @@ from flask_cors import CORS  # 处理跨域请求
 import os
 from models.demo import process1 as process1_function, process2 as process2_function, process3 as process3_function
 from utils.file_processing import save_file, delete_file  # 文件处理工具
-
+import json
 # 创建 Flask 应用
 app = Flask(__name__)
 
@@ -17,9 +17,16 @@ OUTPUT_FILE = 'output.json'
 # 确保上传目录存在
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
+# 路由：渲染第一个前端页面（index.html）
 @app.route('/')
 def serve_index():
     return render_template('index.html')
+
+
+# 路由：渲染第二个前端页面（visualize.html）
+@app.route('/visualize')
+def serve_visualize():
+    return render_template('visualize.html')
 
 
 def handle_process_request(req, process_func):
@@ -98,20 +105,37 @@ def process_files_3():
     return handle_process_request(request, process3_function)
 
 
+# 处理JSON数据上传（用于第二个前端）
+@app.route('/upload', methods=['POST'])
+def upload_json():
+    try:
+        # 支持两种方式接收数据：JSON格式或表单文件
+        if request.is_json:
+            data = request.get_json()
+        else:
+            file = request.files['jsonData']
+            if file:
+                data = json.load(file)
+            else:
+                return jsonify({"error": "No JSON data provided"}), 400
+
+        # 保存JSON数据到文件（可选）
+        with open(OUTPUT_FILE, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=4)
+
+        return jsonify(data)
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# 确保/download路由支持GET方法
 @app.route('/download', methods=['GET'])
 def download():
-    """
-    提供下载处理结果的 API 路由。
-    """
     if os.path.exists(OUTPUT_FILE):
-        return send_file(
-            OUTPUT_FILE,
-            as_attachment=True,
-            mimetype='application/json;charset=utf-8',  # 设置 MIME 类型和编码
-            download_name='result.json'  # 下载文件名
-        )
+        return send_file(OUTPUT_FILE, mimetype='application/json')
     else:
-        return jsonify({"error": "File not found"}), 404
+        return jsonify({"error": "No data available"}), 404
 
 
 if __name__ == '__main__':

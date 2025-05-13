@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <title>Dynamic Knowledge Graph Visualization</title>
@@ -32,28 +32,31 @@
 let graph = {};
 let selectedNode = null;
 
+document.addEventListener('DOMContentLoaded', function() {
+    // 从后端API获取最新的JSON数据
+    fetch('/download')
+        .then(response => response.json())
+        .then(data => {
+            visualize(data);
+        })
+        .catch(error => {
+            console.error('Error fetching data:', error);
+        });
+});
+
 function loadGraph() {
+    // 保持原有逻辑，支持手动上传文件
     const inputJson = document.getElementById('jsonInput').value;
     const fileInput = document.getElementById('jsonFile');
 
     if (inputJson) {
-        fetch('/upload', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: inputJson
-        })
-        .then(response => response.text())
-        .then(data => visualize(JSON.parse(data)));
+        visualize(JSON.parse(inputJson));
     } else if (fileInput.files.length > 0) {
-        const formData = new FormData();
-        formData.append('file', fileInput.files[0]);
-
-        fetch('/upload', {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.text())
-        .then(data => visualize(JSON.parse(data)));
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            visualize(JSON.parse(e.target.result));
+        };
+        reader.readAsText(fileInput.files[0]);
     }
 }
 

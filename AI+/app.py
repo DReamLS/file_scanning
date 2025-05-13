@@ -17,7 +17,7 @@ def upload_file():
 
 @app.route('/')
 def serve_homepage():
-    return send_from_directory('.', 'index.html')
+    return send_from_directory('.', '../templates/visualize.html')
 
 if __name__ == '__main__':
     app.run(debug=True)
