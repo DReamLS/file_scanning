@@ -2,350 +2,483 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>Dynamic Knowledge Graph Visualization</title>
+    <title>动态知识图谱可视化</title>
     <script src="https://d3js.org/d3.v6.min.js"></script>
     <style>
-        .link { stroke: blue; stroke-opacity: 0.6; }
-        .node circle { stroke: #fff; stroke-width: 1.5px; cursor: pointer; }
-        .node text { font-size: 10px; pointer-events: none; fill: #333; }
-        #sidebar { position: absolute; top: 0; right: 0; width: 30%; background-color: white; padding: 10px; border-left: 1px solid #ccc; height: 100%; overflow-y: auto; }
+        /* 整体布局优化 */
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            min-width: 1200px;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        #sidebar {
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: 300px;
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-left: 1px solid #e9ecef;
+            box-shadow: 0 0 15px rgba(0,0,0,0.05);
+            overflow-y: auto;
+            max-height: 100vh;
+        }
+
+        .main-container {
+            flex-grow: 1;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* SVG容器美化 */
+        svg {
+            background-color: #fff;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.08);
+            margin: 20px;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+        }
+
+        /* 节点和连线样式 */
+        .link {
+            stroke: #6495ED;
+            stroke-opacity: 0.7;
+            stroke-width: 1.2px;
+            transition: stroke-opacity 0.3s;
+        }
+
+        .node circle {
+            stroke: #fff;
+            stroke-width: 2px;
+            cursor: grab;
+            transition: transform 0.3s, fill 0.3s;
+        }
+
+        .node circle:hover {
+            fill: #4a90e2;
+            stroke-width: 2.5px;
+            transform: scale(1.05);
+        }
+
+        .node text {
+            font-size: 12px;
+            fill: #333;
+            text-anchor: middle;
+            dominant-baseline: middle;
+        }
+
+        /* 侧边栏样式 */
+        #nodeDetails {
+            margin-top: 20px;
+        }
+
+        #nodeDetails p {
+            margin: 10px 0;
+        }
+
+        #nodeDetails input {
+            padding: 4px 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 120px;
+        }
+
+        button {
+            padding: 8px 16px;
+            background-color: #4a90e2;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #357bd8;
+        }
+
+        .header-buttons {
+            margin: 20px;
+        }
+
+        /* 响应式调整 */
+        @media (max-width: 1200px) {
+            #sidebar {
+                width: 350px;
+            }
+        }
+
+        @media (max-width: 992px) {
+            body {
+                flex-direction: column;
+                overflow-x: auto;
+            }
+            #sidebar {
+                position: static;
+                width: 100%;
+                max-height: 200px;
+                overflow-x: auto;
+            }
+            svg {
+                margin: 10px;
+            }
+        }
     </style>
 </head>
 <body>
-<textarea id="jsonInput" rows="10" cols="50" placeholder="Paste your JSON here..."></textarea>
-<input type="file" id="jsonFile" accept=".json"/>
-<button onclick="loadGraph()">Load Graph</button>
-<button onclick="downloadGraph()">Download Graph as JSON</button>
+    <div class="header-buttons">
+        <textarea id="jsonInput" rows="8" cols="40" placeholder="粘贴你的JSON数据..."
+                  style="padding: 8px; border: 1px solid #ddd; border-radius: 4px; margin-right: 10px;"></textarea>
+        <input type="file" id="jsonFile" accept=".json"
+               style="padding: 6px; border: 1px solid #ddd; border-radius: 4px; margin-right: 10px;">
+        <button onclick="loadGraph()">加载图谱</button>
+        <button onclick="downloadGraph()">下载图谱</button>
+    </div>
 
-<svg width="1600" height="1000">
-    <g transform="translate(0,0)scale(1)">
-    </g>
-</svg>
+    <div class="main-container">
+        <svg width="1600" height="1000">
+            <g transform="translate(0,0)scale(1)">
+            </g>
+        </svg>
+    </div>
 
-<div id="sidebar">
-    <h3>Node Information</h3>
-    <div id="nodeDetails"></div>
-    <button onclick="submitChanges()">Submit Changes</button>
-</div>
+    <div id="sidebar">
+        <h3 style="color: #333; border-bottom: 2px solid #e0e0e0; padding-bottom: 8px;">节点信息</h3>
+        <div id="nodeDetails"></div>
+        <button onclick="submitChanges()" style="margin-top: 10px;">保存修改</button>
+    </div>
 
-<script>
-let graph = {};
-let selectedNode = null;
+    <script>
+    // 原功能代码保持不变，仅调整部分样式相关变量和布局操作
+    let graph = {};
+    let selectedNode = null;
 
-document.addEventListener('DOMContentLoaded', function() {
-    // 从后端API获取最新的JSON数据
-    fetch('/download')
-        .then(response => response.json())
-        .then(data => {
-            visualize(data);
-        })
-        .catch(error => {
-            console.error('Error fetching data:', error);
-        });
-});
-
-function loadGraph() {
-    // 保持原有逻辑，支持手动上传文件
-    const inputJson = document.getElementById('jsonInput').value;
-    const fileInput = document.getElementById('jsonFile');
-
-    if (inputJson) {
-        visualize(JSON.parse(inputJson));
-    } else if (fileInput.files.length > 0) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            visualize(JSON.parse(e.target.result));
-        };
-        reader.readAsText(fileInput.files[0]);
-    }
-}
-
-function visualize(jsonData) {
-    let nodes = [], links = [];
-
-    function addNodeAndLinks(parentId, data, depth = 0) {
-        if (typeof data === 'object') {
-            Object.keys(data).forEach(key => {
-                const nodeId = `${parentId}-${key}`;
-                nodes.push({ id: nodeId, label: key, group: `group-${depth}` });
-
-                if (parentId !== 'root') {
-                    links.push({ source: parentId, target: nodeId });
-                }
-
-                if (Array.isArray(data[key])) {
-                    data[key].forEach(item => {
-                        const itemNodeId = `${nodeId}-${item.replace(/\s+/g, '-')}`;
-                        nodes.push({ id: itemNodeId, label: item, group: `group-${depth + 1}` });
-                        links.push({ source: nodeId, target: itemNodeId });
-                    });
-                } else if (typeof data[key] === 'object') {
-                    addNodeAndLinks(nodeId, data[key], depth + 1);
-                }
+    document.addEventListener('DOMContentLoaded', function() {
+        fetch('/download')
+            .then(response => response.json())
+            .then(data => {
+                visualize(data);
+            })
+            .catch(error => {
+                console.error('Error fetching data:', error);
             });
+    });
+
+    function loadGraph() {
+        // 保持原有逻辑，支持手动上传文件
+        const inputJson = document.getElementById('jsonInput').value;
+        const fileInput = document.getElementById('jsonFile');
+
+        if (inputJson) {
+            visualize(JSON.parse(inputJson));
+        } else if (fileInput.files.length > 0) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                visualize(JSON.parse(e.target.result));
+            };
+            reader.readAsText(fileInput.files[0]);
         }
     }
 
-    addNodeAndLinks('root', jsonData);
+    function visualize(jsonData) {
+        let nodes = [], links = [];
 
-    // 转换为D3.js所需的格式
-    links.forEach(link => {
-        link.source = nodes.find(node => node.id === link.source);
-        link.target = nodes.find(node => node.id === link.target);
-    });
+        function addNodeAndLinks(parentId, data, depth = 0) {
+            if (typeof data === 'object') {
+                Object.keys(data).forEach(key => {
+                    const nodeId = `${parentId}-${key}`;
+                    nodes.push({ id: nodeId, label: key, group: `group-${depth}` });
 
-    graph = {nodes: nodes, links: links};
+                    if (parentId !== 'root') {
+                        links.push({ source: parentId, target: nodeId });
+                    }
 
-    renderGraph(graph);
-}
-
-function renderGraph(graph) {
-    const svg = d3.select("svg"),
-          width = +svg.attr("width"),
-          height = +svg.attr("height");
-
-    svg.selectAll("*").remove();
-
-    const g = svg.append("g")
-        .attr("transform", "translate(0,0)scale(1)");
-
-    const layerSpacing = 400, nodeRadius = 5;
-
-    // 获取所有根节点
-    const rootNodes = graph.nodes.filter(node => !graph.links.some(link => link.target.id === node.id));
-
-    let yOffset = 50; // 初始偏移量
-
-    rootNodes.forEach((rootNode, index) => {
-        const hierarchy = buildHierarchy(rootNode, graph.links);
-
-        // 计算每个层次的最大Y值
-        let maxYInHierarchy = 0;
-
-        for (let depth = Object.keys(hierarchy).length - 1; depth >= 0; depth--) {
-            if (!hierarchy[depth]) continue;
-            const nodesInLayer = hierarchy[depth];
-            let yStep = (height - 100) / (nodesInLayer.length + 1);
-            nodesInLayer.forEach((node, index) => {
-                node.y = yStep * (index + 1);
-            });
-
-            maxYInHierarchy = Math.max(maxYInHierarchy, ...nodesInLayer.map(node => node.y));
-
-            if (hierarchy[depth - 1]) {
-                hierarchy[depth - 1].forEach(parentNode => {
-                    const children = graph.links.filter(link => link.source.id === parentNode.id)
-                                                .map(link => link.target);
-                    const minY = Math.min(...children.map(child => child.y));
-                    const maxY = Math.max(...children.map(child => child.y));
-                    parentNode.y = (minY + maxY) / 2;
+                    if (Array.isArray(data[key])) {
+                        data[key].forEach(item => {
+                            const itemNodeId = `${nodeId}-${item.replace(/\s+/g, '-')}`;
+                            nodes.push({ id: itemNodeId, label: item, group: `group-${depth + 1}` });
+                            links.push({ source: nodeId, target: itemNodeId });
+                        });
+                    } else if (typeof data[key] === 'object') {
+                        addNodeAndLinks(nodeId, data[key], depth + 1);
+                    }
                 });
             }
         }
 
-        Object.keys(hierarchy).forEach(layerKey => {
-            hierarchy[layerKey].forEach(node => {
-                node.x = layerKey * layerSpacing + 100;
-            });
+        addNodeAndLinks('root', jsonData);
+
+        // 转换为D3.js所需的格式
+        links.forEach(link => {
+            link.source = nodes.find(node => node.id === link.source);
+            link.target = nodes.find(node => node.id === link.target);
         });
 
-        const finalYOffset = yOffset + index * (maxYInHierarchy + 100);
-        Object.keys(hierarchy).forEach(layerKey => {
-            hierarchy[layerKey].forEach(node => {
-                node.y += finalYOffset;
-            });
-        });
-    });
+        graph = {nodes: nodes, links: links};
 
-    const link = g.append("g")
-        .attr("class", "links")
-        .selectAll("line")
-        .data(graph.links)
-        .enter().append("line")
-        .attr("class", "link");
-
-    const node = g.append("g")
-        .attr("class", "nodes")
-        .selectAll("g")
-        .data(graph.nodes)
-        .enter().append("g")
-        .attr("transform", d => `translate(${d.x},${d.y})`)
-        .call(d3.drag()
-            .on("drag", dragged))
-        .on("click", (event, d) => showNodeDetails(d));
-
-    node.append("circle")
-        .attr("r", nodeRadius);
-
-    node.append("text")
-        .attr("dx", ".35em")
-        .text(d => d.label);
-
-    updateLinkPositions();
-
-    function updateLinkPositions() {
-        link.attr("x1", d => d.source.x)
-            .attr("y1", d => d.source.y)
-            .attr("x2", d => d.target.x)
-            .attr("y2", d => d.target.y);
+        renderGraph(graph);
     }
 
-    function dragged(event, d) {
-        d.x = event.x;
-        d.y = event.y;
-        d3.select(this).attr("transform", `translate(${d.x},${d.y})`);
-        updateLinkPositions();
-    }
+    function renderGraph(graph) {
+        const svg = d3.select("svg"),
+              width = +svg.attr("width"),
+              height = +svg.attr("height");
 
-    const zoom = d3.zoom()
-        .scaleExtent([0.1, 10])
-        .on("zoom", zoomed);
+        svg.selectAll("*").remove();
 
-    svg.call(zoom);
+        const g = svg.append("g")
+            .attr("transform", "translate(0,0)scale(1)");
 
-    function zoomed(event) {
-        g.attr("transform", event.transform);
-    }
-}
+        const layerSpacing = 400, nodeRadius = 6; // 增大节点半径提升视觉效果
 
-function buildHierarchy(rootNode, links) {
-    let hierarchy = {};
-    function traverse(node, depth = 0) {
-        if (!hierarchy[depth]) hierarchy[depth] = [];
-        hierarchy[depth].push(node);
-        links.filter(link => link.source.id === node.id)
-             .forEach(link => traverse(link.target, depth + 1));
-    }
-    traverse(rootNode);
-    return hierarchy;
-}
+        // 获取所有根节点
+        const rootNodes = graph.nodes.filter(node => !graph.links.some(link => link.target.id === node.id));
 
-function showNodeDetails(node) {
-    selectedNode = node;
-    const detailsDiv = document.getElementById('nodeDetails');
-    detailsDiv.innerHTML = `
-        <p><strong>ID:</strong> ${node.id}</p>
-        <p><strong>Label:</strong> <input type="text" id="labelInput" value="${node.label}"/></p>
-        <p><strong>Group:</strong> ${node.group}</p>
-        <p><strong>Parent:</strong> ${getParentLabel(node)}</p>
-        <p><strong>Children:</strong> ${getChildrenLabels(node)}</p>
-    `;
-    document.getElementById('sidebar').style.display = 'block';
-}
+        let yOffset = 50; // 初始偏移量
 
-function getParentLabel(node) {
-    const parentLink = graph.links.find(link => link.target.id === node.id);
-    return parentLink ? findNodeById(parentLink.source.id).label : 'None';
-}
+        rootNodes.forEach((rootNode, index) => {
+            const hierarchy = buildHierarchy(rootNode, graph.links);
 
-function getChildrenLabels(node) {
-    return graph.links.filter(link => link.source.id === node.id)
-                      .map(link => findNodeById(link.target.id).label)
-                      .join(', ');
-}
+            // 计算每个层次的最大Y值
+            let maxYInHierarchy = 0;
 
-function findNodeById(id) {
-    return graph.nodes.find(node => node.id === id);
-}
+            for (let depth = Object.keys(hierarchy).length - 1; depth >= 0; depth--) {
+                if (!hierarchy[depth]) continue;
+                const nodesInLayer = hierarchy[depth];
+                let yStep = (height - 100) / (nodesInLayer.length + 1);
+                nodesInLayer.forEach((node, index) => {
+                    node.y = yStep * (index + 1);
+                });
 
-function submitChanges() {
-    const labelInput = document.getElementById('labelInput');
-    if (selectedNode && labelInput.value) {
-        selectedNode.label = labelInput.value;
-        renderGraph(graph); // 重新渲染图谱以显示更改
-    }
-}
+                maxYInHierarchy = Math.max(maxYInHierarchy, ...nodesInLayer.map(node => node.y));
 
-function downloadGraph() {
-    // 构建新的JSON对象
-    const rootNode = buildJsonFromGraph(graph);
-
-    // 将对象转换为JSON字符串
-    let jsonString = JSON.stringify(rootNode, null, 2);
-
-    // 解析JSON字符串以便处理
-    let jsonObj = JSON.parse(jsonString);
-
-    // 处理JSON对象，将最终指向null的字典改为该字典的键
-    function flattenNullDicts(obj) {
-        if (typeof obj !== 'object' || obj === null) return obj;
-        for (let key of Object.keys(obj)) {
-            if (obj[key] && typeof obj[key] === 'object' &&
-                Object.values(obj[key]).every(val => val === null)) {
-                // 如果字典的所有值都是null，则用该字典的所有键替换（通常是一个）
-                const newKeys = Object.keys(obj[key]);
-                obj[key] = newKeys.length === 1 ? newKeys[0] : newKeys;
-            } else if (typeof obj[key] === 'object') {
-                flattenNullDicts(obj[key]);
-            }
-        }
-    }
-
-    flattenNullDicts(jsonObj);
-
-    // 将处理后的对象转回JSON字符串
-    jsonString = JSON.stringify(jsonObj, null, 2);
-
-    // 创建一个Blob对象
-    const blob = new Blob([jsonString], { type: 'application/json' });
-
-    // 创建一个隐藏的a元素用于触发下载
-    const a = document.createElement('a');
-    a.style.display = 'none';
-    a.href = URL.createObjectURL(blob);
-    a.download = 'graph.json';
-
-    // 将a元素添加到DOM中
-    document.body.appendChild(a);
-
-    // 触发点击事件进行下载
-    a.click();
-
-    // 移除a元素
-    document.body.removeChild(a);
-}
-
-function buildJsonFromGraph(graph) {
-    const rootNodes = graph.nodes.filter(node => !graph.links.some(link => link.target.id === node.id));
-    const rootNode = {};
-
-    rootNodes.forEach(rootNodeItem => {
-        const key = rootNodeItem.label;
-        const subTree = buildSubtree(rootNodeItem, graph.links, graph.nodes);
-        if (subTree !== undefined && Object.keys(subTree).length > 0) {
-            rootNode[key] = subTree;
-        }
-    });
-
-    return rootNode;
-
-    function buildSubtree(node, links, nodes) {
-        const childrenLinks = links.filter(link => link.source.id === node.id);
-        if (childrenLinks.length === 0) return undefined; // 如果没有子节点，返回undefined
-
-        const subtree = {};
-        childrenLinks.forEach(link => {
-            const childNode = nodes.find(n => n.id === link.target.id);
-            const childKey = childNode.label;
-            const childSubtree = buildSubtree(childNode, links, nodes);
-            if (childSubtree !== undefined) {
-                if (subtree[childKey]) {
-                    // 如果键已存在，检查其是否为数组，如果不是则转换为数组
-                    if (!Array.isArray(subtree[childKey])) {
-                        subtree[childKey] = [subtree[childKey]];
-                    }
-                    subtree[childKey].push(childSubtree);
-                } else {
-                    subtree[childKey] = childSubtree;
+                if (hierarchy[depth - 1]) {
+                    hierarchy[depth - 1].forEach(parentNode => {
+                        const children = graph.links.filter(link => link.source.id === parentNode.id)
+                                                    .map(link => link.target);
+                        const minY = Math.min(...children.map(child => child.y));
+                        const maxY = Math.max(...children.map(child => child.y));
+                        parentNode.y = (minY + maxY) / 2;
+                    });
                 }
-            } else {
-                subtree[childKey] = null; // 标记无子节点但存在的节点
+            }
+
+            Object.keys(hierarchy).forEach(layerKey => {
+                hierarchy[layerKey].forEach(node => {
+                    node.x = layerKey * layerSpacing + 100;
+                });
+            });
+
+            const finalYOffset = yOffset + index * (maxYInHierarchy + 100);
+            Object.keys(hierarchy).forEach(layerKey => {
+                hierarchy[layerKey].forEach(node => {
+                    node.y += finalYOffset;
+                });
+            });
+        });
+
+        const link = g.append("g")
+            .attr("class", "links")
+            .selectAll("line")
+            .data(graph.links)
+            .enter().append("line")
+            .attr("class", "link");
+
+        const node = g.append("g")
+            .attr("class", "nodes")
+            .selectAll("g")
+            .data(graph.nodes)
+            .enter().append("g")
+            .attr("transform", d => `translate(${d.x},${d.y})`)
+            .call(d3.drag()
+                .on("drag", dragged))
+            .on("click", (event, d) => showNodeDetails(d));
+
+        node.append("circle")
+            .attr("r", nodeRadius)
+            .style("fill", "#4a90e2"); // 添加默认填充色
+
+        node.append("text")
+            .attr("dx", ".35em")
+            .text(d => d.label);
+
+        updateLinkPositions();
+
+        function updateLinkPositions() {
+            link.attr("x1", d => d.source.x)
+                .attr("y1", d => d.source.y)
+                .attr("x2", d => d.target.x)
+                .attr("y2", d => d.target.y);
+        }
+
+        function dragged(event, d) {
+            d.x = event.x;
+            d.y = event.y;
+            d3.select(this).attr("transform", `translate(${d.x},${d.y})`);
+            updateLinkPositions();
+        }
+
+        const zoom = d3.zoom()
+            .scaleExtent([0.1, 10])
+            .on("zoom", zoomed);
+
+        svg.call(zoom);
+
+        function zoomed(event) {
+            g.attr("transform", event.transform);
+        }
+    }
+
+    function buildHierarchy(rootNode, links) {
+        let hierarchy = {};
+        function traverse(node, depth = 0) {
+            if (!hierarchy[depth]) hierarchy[depth] = [];
+            hierarchy[depth].push(node);
+            links.filter(link => link.source.id === node.id)
+                 .forEach(link => traverse(link.target, depth + 1));
+        }
+        traverse(rootNode);
+        return hierarchy;
+    }
+
+    function showNodeDetails(node) {
+        selectedNode = node;
+        const detailsDiv = document.getElementById('nodeDetails');
+        detailsDiv.innerHTML = `
+            <p><strong>ID:</strong> ${node.id}</p>
+            <p><strong>Label:</strong> <input type="text" id="labelInput" value="${node.label}"/></p>
+            <p><strong>Group:</strong> ${node.group}</p>
+            <p><strong>Parent:</strong> ${getParentLabel(node)}</p>
+            <p><strong>Children:</strong> ${getChildrenLabels(node)}</p>
+        `;
+        document.getElementById('sidebar').style.display = 'block';
+    }
+
+    function getParentLabel(node) {
+        const parentLink = graph.links.find(link => link.target.id === node.id);
+        return parentLink ? findNodeById(parentLink.source.id).label : 'None';
+    }
+
+    function getChildrenLabels(node) {
+        return graph.links.filter(link => link.source.id === node.id)
+                          .map(link => findNodeById(link.target.id).label)
+                          .join(', ');
+    }
+
+    function findNodeById(id) {
+        return graph.nodes.find(node => node.id === id);
+    }
+
+    function submitChanges() {
+        const labelInput = document.getElementById('labelInput');
+        if (selectedNode && labelInput.value) {
+            selectedNode.label = labelInput.value;
+            renderGraph(graph); // 重新渲染图谱以显示更改
+        }
+    }
+
+    function downloadGraph() {
+        // 构建新的JSON对象
+        const rootNode = buildJsonFromGraph(graph);
+
+        // 将对象转换为JSON字符串
+        let jsonString = JSON.stringify(rootNode, null, 2);
+
+        // 解析JSON字符串以便处理
+        let jsonObj = JSON.parse(jsonString);
+
+        // 处理JSON对象，将最终指向null的字典改为该字典的键
+        function flattenNullDicts(obj) {
+            if (typeof obj !== 'object' || obj === null) return obj;
+
+            for (let key of Object.keys(obj)) {
+                const value = obj[key];
+
+                // 如果 value 是对象，并且所有值都是 null，则进行转换
+                if (value && typeof value === 'object' && !Array.isArray(value) &&
+                    Object.values(value).every(val => val === null)) {
+
+                    // 获取所有键
+                    const newKeys = Object.keys(value);
+
+                    // 统一转换为数组形式，不管数量是不是1
+                    obj[key] = newKeys;
+
+                } else if (typeof value === 'object') {
+                    // 否则递归处理
+                    flattenNullDicts(value);
+                }
+            }
+        }
+        flattenNullDicts(jsonObj);
+
+        // 将处理后的对象转回JSON字符串
+        jsonString = JSON.stringify(jsonObj, null, 2);
+
+        // 创建一个Blob对象
+        const blob = new Blob([jsonString], { type: 'application/json' });
+
+        // 创建一个隐藏的a元素用于触发下载
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = URL.createObjectURL(blob);
+        a.download = 'graph.json';
+
+        // 将a元素添加到DOM中
+        document.body.appendChild(a);
+
+        // 触发点击事件进行下载
+        a.click();
+
+        // 移除a元素
+        document.body.removeChild(a);
+    }
+
+    function buildJsonFromGraph(graph) {
+        const rootNodes = graph.nodes.filter(node => !graph.links.some(link => link.target.id === node.id));
+        const rootNode = {};
+
+        rootNodes.forEach(rootNodeItem => {
+            const key = rootNodeItem.label;
+            const subTree = buildSubtree(rootNodeItem, graph.links, graph.nodes);
+            if (subTree !== undefined && Object.keys(subTree).length > 0) {
+                rootNode[key] = subTree;
             }
         });
 
-        return subtree;
+        return rootNode;
+
+        function buildSubtree(node, links, nodes) {
+            const childrenLinks = links.filter(link => link.source.id === node.id);
+            if (childrenLinks.length === 0) return undefined; // 如果没有子节点，返回undefined
+
+            const subtree = {};
+            childrenLinks.forEach(link => {
+                const childNode = nodes.find(n => n.id === link.target.id);
+                const childKey = childNode.label;
+                const childSubtree = buildSubtree(childNode, links, nodes);
+                if (childSubtree !== undefined) {
+                    if (subtree[childKey]) {
+                        // 如果键已存在，检查其是否为数组，如果不是则转换为数组
+                        if (!Array.isArray(subtree[childKey])) {
+                            subtree[childKey] = [subtree[childKey]];
+                        }
+                        subtree[childKey].push(childSubtree);
+                    } else {
+                        subtree[childKey] = childSubtree;
+                    }
+                } else {
+                    subtree[childKey] = null; // 标记无子节点但存在的节点
+                }
+            });
+
+            return subtree;
+        }
     }
-}
-</script>
+    </script>
 </body>
 </html>

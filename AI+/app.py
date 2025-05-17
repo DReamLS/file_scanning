@@ -1,6 +1,6 @@
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask, jsonify, request, send_from_directory ,render_template
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder='../templates')
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
@@ -17,7 +17,7 @@ def upload_file():
 
 @app.route('/')
 def serve_homepage():
-    return send_from_directory('.', '../templates/visualize.html')
+    return render_template('visualize.html')  # 使用 render_template 加载模板文件
 
 if __name__ == '__main__':
     app.run(debug=True)
