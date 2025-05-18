@@ -1,6 +1,6 @@
-from layout_analysis import sort_fixed_area_into_lines, filter_fences, calculate_average_distance
-from table_structure import detect_grid_lines, partition_cells, identify_header_and_data, detect_merged_cells
-from relationship_inference import find_lower_right_rects
+from .layout_analysis import sort_fixed_area_into_lines, filter_fences, calculate_average_distance
+from .table_structure import detect_grid_lines, partition_cells, identify_header_and_data, detect_merged_cells
+from .relationship_inference import find_lower_right_rects
 
 
 def fixed_to_flexible(fixed_area, format_info=None):
