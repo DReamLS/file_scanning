@@ -105,6 +105,18 @@
             margin: 20px;
         }
 
+        #childrenControl {
+            margin-top: 20px;
+        }
+
+        #childrenSelect {
+            width: 180px;
+            padding: 4px 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-right: 5px;
+        }
+
         /* 响应式调整 */
         @media (max-width: 1200px) {
             #sidebar {
@@ -149,6 +161,24 @@
     <div id="sidebar">
         <h3 style="color: #333; border-bottom: 2px solid #e0e0e0; padding-bottom: 8px;">节点信息</h3>
         <div id="nodeDetails"></div>
+        <div id="parentControl" style="margin-top: 20px;">
+            <h4>父节点</h4>
+            <select id="parentSelect">
+                <option value="">无父节点</option>
+            </select>
+            <button onclick="changeParent()">更新父节点</button>
+        </div>
+
+        <div id="childrenControl" style="margin-top: 20px;">
+            <h4>子节点</h4>
+            <select id="childrenSelect">
+                <option value="">选择子节点</option>
+            </select>
+            <input type="text" id="newChildInput" placeholder="输入子节点标签" style="width: 120px;">
+            <button onclick="addChild()">添加子节点</button>
+            <button onclick="removeSelectedChild()">删除子节点</button>
+        </div>
+
         <button onclick="submitChanges()" style="margin-top: 10px;">保存修改</button>
     </div>
 
@@ -187,17 +217,24 @@
     function visualize(jsonData) {
         let nodes = [], links = [];
 
-        function addNodeAndLinks(parentId, data, depth = 0) {
-            if (typeof data === 'object') {
-                Object.keys(data).forEach(key => {
-                    const nodeId = `${parentId}-${key}`;
-                    nodes.push({ id: nodeId, label: key, group: `group-${depth}` });
-
-                    if (parentId !== 'root') {
-                        links.push({ source: parentId, target: nodeId });
-                    }
-
-                    if (Array.isArray(data[key])) {
+        function addNodeAndLinks(parentId, data, depth) {
+            const stack = [{ parentId, data, depth }];
+            while (stack.length > 0) {
+                const { parentId, data, depth } = stack.pop();
+                if (typeof data === 'object') {
+                    Object.keys(data).forEach(key => {
+                        const nodeId = `${parentId}-${key}`;
+                        nodes.push({
+                            id: nodeId,
+                            label: key,
+                            group: `group-${depth}`,
+                            parentId: parentId // 新增父节点ID
+                        });
+                        if (parentId !== 'root') {
+                            links.push({ source: parentId, target: nodeId });
+                        }
+                        const value = data[key];
+                        if (Array.isArray(data[key])) {
                         data[key].forEach(item => {
                             const itemNodeId = `${nodeId}-${item.replace(/\s+/g, '-')}`;
                             nodes.push({ id: itemNodeId, label: item, group: `group-${depth + 1}` });
@@ -206,10 +243,10 @@
                     } else if (typeof data[key] === 'object') {
                         addNodeAndLinks(nodeId, data[key], depth + 1);
                     }
-                });
+                    });
+                }
             }
         }
-
         addNodeAndLinks('root', jsonData);
 
         // 转换为D3.js所需的格式
@@ -224,6 +261,13 @@
     }
 
     function renderGraph(graph) {
+        // 更新子节点引用
+        graph.nodes.forEach(node => {
+            node.children = graph.links
+                .filter(link => link.source.id === node.id)
+                .map(link => link.target.id);
+        });
+
         const svg = d3.select("svg"),
               width = +svg.attr("width"),
               height = +svg.attr("height");
@@ -352,10 +396,222 @@
             <p><strong>ID:</strong> ${node.id}</p>
             <p><strong>Label:</strong> <input type="text" id="labelInput" value="${node.label}"/></p>
             <p><strong>Group:</strong> ${node.group}</p>
-            <p><strong>Parent:</strong> ${getParentLabel(node)}</p>
-            <p><strong>Children:</strong> ${getChildrenLabels(node)}</p>
         `;
+
+        // 添加子节点选择器
+        detailsDiv.innerHTML += `
+            <div id="childSelector" style="margin-top: 15px;">
+                <h4>子节点选择</h4>
+                <div id="childList" style="max-height: 200px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; border-radius: 4px;"></div>
+                <button onclick="saveChildSelection()">保存子节点</button>
+            </div>
+        `;
+
+        // 渲染父节点选择框
+        renderParentSelect(node);
+
+        // 渲染子节点列表
+        renderChildrenList(node);
+
+        // 渲染子节点选择器
+        renderChildSelector(node);
+
         document.getElementById('sidebar').style.display = 'block';
+    }
+
+    function renderParentSelect(node) {
+        const parentSelect = document.getElementById('parentSelect');
+        parentSelect.innerHTML = '<option value="">无父节点</option>';
+
+        // 获取所有可选父节点（排除当前节点及其子节点）
+        const allNodes = graph.nodes.filter(n => n.id !== node.id);
+        const validParents = allNodes.filter(parent => !isDescendant(parent, node));
+
+        validParents.forEach(parent => {
+            const option = document.createElement('option');
+            option.value = parent.id;
+            option.text = `${parent.label} (ID: ${parent.id})`;
+            parentSelect.appendChild(option);
+        });
+
+        // 选中当前父节点
+        const currentParent = graph.links.find(link => link.target.id === node.id)?.source;
+        if (currentParent) {
+            parentSelect.value = currentParent.id;
+        }
+    }
+
+    function renderChildrenList(node) {
+        const childrenSelect = document.getElementById('childrenSelect');
+        childrenSelect.innerHTML = '<option value="">选择子节点</option>';
+
+        const children = graph.links.filter(link => link.source.id === node.id)
+                                   .map(link => link.target);
+
+        children.forEach(child => {
+            const option = document.createElement('option');
+            option.value = child.id;
+            option.text = `${child.label} (ID: ${child.id})`;
+            childrenSelect.appendChild(option);
+        });
+    }
+
+    function renderChildSelector(node) {
+        const childList = document.getElementById('childList');
+        childList.innerHTML = '';
+
+        // 获取所有可选节点（排除自身）
+        const allNodes = graph.nodes.filter(n => n.id !== node.id);
+
+        allNodes.forEach(candidate => {
+            const isChild = node.children.includes(candidate.id);
+            const item = document.createElement('div');
+            item.className = 'child-item';
+            item.style.display = 'flex';
+            item.style.alignItems = 'center';
+            item.style.padding = '5px 0';
+
+            // 创建复选框
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.id = `child-${candidate.id}`;
+            checkbox.checked = isChild;
+            checkbox.onchange = function() {
+                toggleChildSelection(node, candidate.id, this.checked);
+            };
+
+            // 创建标签
+            const label = document.createElement('label');
+            label.htmlFor = `child-${candidate.id}`;
+            label.style.marginLeft = '8px';
+            label.textContent = `${candidate.label} (ID: ${candidate.id})`;
+
+            item.appendChild(checkbox);
+            item.appendChild(label);
+            childList.appendChild(item);
+        });
+    }
+
+    function toggleChildSelection(parentNode, childId, isSelected) {
+        if (isSelected) {
+            // 添加子节点
+            if (!parentNode.children.includes(childId)) {
+                parentNode.children.push(childId);
+            }
+        } else {
+            // 移除子节点
+            parentNode.children = parentNode.children.filter(id => id !== childId);
+        }
+    }
+
+    function saveChildSelection() {
+        if (!selectedNode) return;
+
+        // 清除现有子节点连线
+        graph.links = graph.links.filter(link =>
+            link.source.id !== selectedNode.id
+        );
+
+        // 添加新的子节点连线
+        selectedNode.children.forEach(childId => {
+            const childNode = graph.nodes.find(n => n.id === childId);
+            if (childNode) {
+                graph.links.push({
+                    source: selectedNode,
+                    target: childNode
+                });
+            }
+        });
+
+        // 重新渲染图谱
+        renderGraph(graph);
+
+        // 更新节点详情
+        showNodeDetails(selectedNode);
+    }
+
+    function addChild() {
+        if (!selectedNode) return;
+        const newLabel = document.getElementById('newChildInput').value.trim();
+        if (!newLabel) return;
+
+        // 创建新节点
+        const newNodeId = `${selectedNode.id}-child-${Date.now()}`;
+        const newNode = {
+            id: newNodeId,
+            label: newLabel,
+            group: `group-${getDepth(selectedNode) + 1}`
+        };
+        graph.nodes.push(newNode);
+
+        // 创建新连线
+        const newLink = {
+            source: selectedNode,
+            target: newNode
+        };
+        graph.links.push(newLink);
+
+        // 清空输入框并重新渲染
+        document.getElementById('newChildInput').value = '';
+        renderGraph(graph);
+    }
+
+    function removeSelectedChild() {
+        if (!selectedNode) return;
+        const childrenSelect = document.getElementById('childrenSelect');
+        const selectedChildId = childrenSelect.value;
+
+        if (!selectedChildId) return;
+
+        const linkToRemove = graph.links.find(
+            link => link.source.id === selectedNode.id && link.target.id === selectedChildId
+        );
+
+        if (linkToRemove) {
+            graph.links = graph.links.filter(link => link !== linkToRemove);
+            graph.nodes = graph.nodes.filter(node => node.id !== selectedChildId);
+            renderGraph(graph);
+            childrenSelect.value = ''; // 清空选择
+        }
+    }
+
+    function changeParent() {
+        const parentSelect = document.getElementById('parentSelect');
+        const newParentId = parentSelect.value;
+        if (!selectedNode || !newParentId) return;
+
+        // 删除原有父连线
+        const oldParentLink = graph.links.find(link => link.target.id === selectedNode.id);
+        if (oldParentLink) {
+            graph.links = graph.links.filter(link => link !== oldParentLink);
+        }
+
+        // 添加新父连线
+        const newParent = graph.nodes.find(node => node.id === newParentId);
+        const newLink = { source: newParent, target: selectedNode };
+        graph.links.push(newLink);
+
+        // 更新节点层级
+        selectedNode.group = `group-${getDepth(newParent) + 1}`;
+
+        renderGraph(graph);
+    }
+
+    // 获取节点层级深度
+    function getDepth(node) {
+        let depth = 0;
+        let currentNode = node;
+        while (graph.links.some(link => link.target.id === currentNode.id)) {
+            currentNode = graph.links.find(link => link.target.id === currentNode.id).source;
+            depth++;
+        }
+        return depth;
+    }
+
+    // 检查是否为子节点（递归函数）
+    function isDescendant(parent, node) {
+        if (parent.id === node.id) return true;
+        return graph.links.some(link => link.source.id === parent.id && isDescendant(link.target, node));
     }
 
     function getParentLabel(node) {
