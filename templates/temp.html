@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>动态知识图谱可视化</title>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <style>
+        /* 整体布局优化 */
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            min-width: 1200px;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        #sidebar {
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: 300px;
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-left: 1px solid #e9ecef;
+            box-shadow: 0 0 15px rgba(0,0,0,0.05);
+            overflow-y: auto;
+            max-height: 100vh;
+        }
+
+        .main-container {
+            flex-grow: 1;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* SVG容器美化 */
+        svg {
+            background-color: #fff;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.08);
+            margin: 20px;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+        }
+
+        /* 节点和连线样式 */
+        .link {
+            stroke: #6495ED;
+            stroke-opacity: 0.7;
+            stroke-width: 1.2px;
+            transition: stroke-opacity 0.3s;
+        }
+
+        .node circle {
+            stroke: #fff;
+            stroke-width: 2px;
+            cursor: grab;
+            transition: transform 0.3s, fill 0.3s;
+        }
+
+        .node circle:hover {
+            fill: #4a90e2;
+            stroke-width: 2.5px;
+            transform: scale(1.05);
+        }
+
+        .node text {
+            font-size: 12px;
+            fill: #333;
+            text-anchor: middle;
+            dominant-baseline: middle;
+        }
+
+        /* 侧边栏样式 */
+        #nodeDetails {
+            margin-top: 20px;
+        }
+
+        #nodeDetails p {
+            margin: 10px 0;
+        }
+
+        #nodeDetails input, #nodeDetails select {
+            padding: 4px 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+
+        button {
+            padding: 8px 16px;
+            background-color: #4a90e2;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px 0;
+            transition: background-color 0.3s;
+            width: 100%;
+        }
+
+        button:hover {
+            background-color: #357bd8;
+        }
+
+        .header-buttons {
+            margin: 20px;
+        }
+
+        /* 响应式调整 */
+        @media (max-width: 1200px) {
+            #sidebar {
+                width: 350px;
+            }
+        }
+
+        @media (max-width: 992px) {
+            body {
+                flex-direction: column;
+                overflow-x: auto;
+            }
+            #sidebar {
+                position: static;
+                width: 100%;
+                max-height: 200px;
+                overflow-x: auto;
+            }
+            svg {
+                margin: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header-buttons">
+        <textarea id="jsonInput" rows="8" cols="40" placeholder="粘贴你的JSON数据..."
+                  style="padding: 8px; border: 1px solid #ddd; border-radius: 4px; margin-right: 10px;"></textarea>
+        <input type="file" id="jsonFile" accept=".json"
+               style="padding: 6px; border: 1px solid #ddd; border-radius: 4px; margin-right: 10px;">
+        <button onclick="loadGraph()">加载图谱</button>
+        <button onclick="downloadGraph()">下载图谱</button>
+    </div>
+
+    <div class="main-container">
+        <svg width="1600" height="1000">
+            <g transform="translate(0,0)scale(1)">
+            </g>
+        </svg>
+    </div>
+
+    <div id="sidebar">
+        <h3 style="color: #333; border-bottom: 2px solid #e0e0e0; padding-bottom: 8px;">节点编辑器</h3>
+        <div id="nodeDetails">
+            <!-- 节点基础信息 -->
+            <div class="form-group">
+                <label><strong>节点标签</strong></label>
+                <select id="labelSelect" style="width: 100%; margin-bottom: 10px;"></select>
+                <button onclick="updateLabel()">更新标签</button>
+            </div>
+
+            <!-- 父节点编辑 -->
+            <div class="form-group">
+                <h4>父节点</h4>
+                <select id="parentSelect" style="width: 100%; margin-bottom: 10px;"></select>
+                <button onclick="changeParent()">更新父节点</button>
+            </div>
+
+            <!-- 子节点编辑 -->
+            <div class="form-group">
+                <h4>子节点</h4>
+                <select id="childrenSelect" multiple style="width: 100%; height: 80px; margin-bottom: 10px;"></select>
+                <div style="display: flex; gap: 5px; margin-top: 5px;">
+                    <input type="text" id="newChildInput" placeholder="输入新子节点标签" style="flex-grow: 1;">
+                    <button onclick="addChild()">添加子节点</button>
+                </div>
+                <button onclick="removeSelectedChildren()">删除选中子节点</button>
+            </div>
+        </div>
+        <button onclick="saveGraph()" style="margin-top: 15px; width: 100%;">保存所有修改</button>
+    </div>
+
+    <script>
+    // ---------------------- 核心变量 ----------------------
+    let graph = { nodes: [], links: [] };
+    let selectedNode = null;
+    const NODE_ID_PREFIX = "node-";
+
+    // ---------------------- DOM加载事件 ----------------------
+    document.addEventListener('DOMContentLoaded', function() {
+        // 初始化时隐藏侧边栏
+        document.getElementById('sidebar').style.display = 'none';
+    });
+
+    // ---------------------- 加载图谱 ----------------------
+    function loadGraph() {
+        const inputJson = document.getElementById('jsonInput').value;
+        const fileInput = document.getElementById('jsonFile');
+
+        if (inputJson) {
+            visualize(JSON.parse(inputJson));
+        } else if (fileInput.files.length > 0) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                visualize(JSON.parse(e.target.result));
+            };
+            reader.readAsText(fileInput.files[0]);
+        }
+    }
+
+    // ---------------------- 可视化图谱 ----------------------
+    function visualize(jsonData) {
+        const nodes = [];
+        const links = [];
+
+        // 递归构建节点和连线（带父节点ID）
+        function buildNodes(parentId, data, depth) {
+            if (typeof data === 'object' && data !== null) {
+                Object.keys(data).forEach(key => {
+                    const nodeId = parentId === 'root' ? key : `${parentId}-${key}`;
+                    nodes.push({
+                        id: nodeId,
+                        label: key,
+                        group: `group-${depth}`,
+                        parentId: parentId || null
+                    });
+
+                    if (parentId !== 'root') {
+                        links.push({ source: parentId, target: nodeId });
+                    }
+
+                    const value = data[key];
+                    if (Array.isArray(value)) {
+                        value.forEach((item, index) => {
+                            const itemNodeId = `${nodeId}-${index}`;
+                            nodes.push({
+                                id: itemNodeId,
+                                label: String(item),
+                                group: `group-${depth + 1}`,
+                                parentId: nodeId
+                            });
+                            links.push({ source: nodeId, target: itemNodeId });
+                        });
+                    } else if (typeof value === 'object') {
+                        buildNodes(nodeId, value, depth + 1);
+                    }
+                });
+            }
+        }
+
+        buildNodes('root', jsonData, 0);
+
+        // 转换为D3所需格式（关联节点对象）
+        links.forEach(link => {
+            link.source = nodes.find(node => node.id === link.source);
+            link.target = nodes.find(node => node.id === link.target);
+        });
+
+        graph = { nodes, links };
+        renderGraph(graph);
+    }
+
+    // ---------------------- 渲染图谱 ----------------------
+    function renderGraph(graph) {
+        const svg = d3.select("svg"),
+              width = +svg.attr("width"),
+              height = +svg.attr("height");
+
+        svg.selectAll("*").remove();
+        const g = svg.append("g").attr("transform", "translate(0,0)scale(1)");
+
+        const layerSpacing = 300;
+        const nodeRadius = 8;
+        const rootNodes = graph.nodes.filter(node => !graph.links.some(link => link.target.id === node.id));
+
+        // 分层布局
+        rootNodes.forEach((rootNode, rootIndex) => {
+            const hierarchy = d3.hierarchy(rootNode, d => graph.links.filter(link => link.source.id === d.id).map(link => link.target));
+            const tree = d3.tree().size([width - 200, height - 200]).separation((a, b) => 100 / a.depth);
+            const root = tree(hierarchy);
+
+            root.descendants().forEach((node, index) => {
+                node.x = node.depth * layerSpacing + rootIndex * layerSpacing / 2;
+                node.y = index * 50 + rootIndex * 100;
+            });
+
+            // 绘制连线
+            g.selectAll("path")
+                .data(root.links())
+                .enter().append("path")
+                .attr("class", "link")
+                .attr("d", d3.linkHorizontal().x(d => d.x).y(d => d.y));
+
+            // 绘制节点
+            const nodeGroup = g.selectAll("g.node")
+                .data(root.descendants())
+                .enter().append("g")
+                .attr("class", "node")
+                .attr("transform", d => `translate(${d.x}, ${d.y})`)
+                .call(d3.drag()
+                    .on("drag", (event, d) => {
+                        d.x = event.x;
+                        d.y = event.y;
+                        d3.select(this).attr("transform", `translate(${d.x}, ${d.y})`);
+                        updateLinkPositions();
+                    }))
+                .on("click", (event, d) => showNodeDetails(d));
+
+            nodeGroup.append("circle")
+                .attr("r", nodeRadius)
+                .style("fill", "#4a90e2")
+                .attr("stroke", "#fff")
+                .attr("stroke-width", 2);
+
+            nodeGroup.append("text")
+                .attr("dx", "0.35em")
+                .attr("dy", "0.35em")
+                .text(d => d.data.label);
+        });
+
+        // 缩放功能
+        const zoom = d3.zoom()
+            .scaleExtent([0.5, 3])
+            .on("zoom", (event) => {
+                g.attr("transform", event.transform);
+            });
+
+        svg.call(zoom);
+
+        function updateLinkPositions() {
+            // 重新计算连线位置（如需动态更新）
+        }
+    }
+
+    // ---------------------- 节点详情显示 ----------------------
+    function showNodeDetails(node) {
+        selectedNode = node;
+        const sidebar = document.getElementById('sidebar');
+        const labelSelect = document.getElementById('labelSelect');
+        const parentSelect = document.getElementById('parentSelect');
+        const childrenSelect = document.getElementById('childrenSelect');
+
+        // 填充标签选择框
+        labelSelect.innerHTML = `
+            <option value="${node.label}">${node.label}</option>
+            <option value="">自定义标签</option>
+        `;
+
+        // 填充父节点选择框
+        parentSelect.innerHTML = '<option value="">无父节点</option>';
+        const validParents = graph.nodes.filter(parent =>
+            parent.id !== node.id &&
+            !isDescendant(parent, node)
+        );
+        validParents.forEach(parent => {
+            const option = document.createElement('option');
+            option.value = parent.id;
+            option.text = `${parent.label} (ID: ${parent.id})`;
+            parentSelect.appendChild(option);
+        });
+        const currentParent = graph.links.find(link => link.target.id === node.id)?.source;
+        if (currentParent) parentSelect.value = currentParent.id;
+
+        // 填充子节点选择框
+        childrenSelect.innerHTML = '';
+        const children = graph.links.filter(link => link.source.id === node.id).map(link => link.target);
+        children.forEach(child => {
+            const option = document.createElement('option');
+            option.value = child.id;
+            option.text = child.label;
+            childrenSelect.appendChild(option);
+        });
+
+        sidebar.style.display = 'block';
+    }
+
+    // ---------------------- 更新节点标签 ----------------------
+    function updateLabel() {
+        if (!selectedNode) return;
+        const newLabel = document.getElementById('labelSelect').value.trim();
+        if (newLabel) {
+            selectedNode.label = newLabel;
+            renderGraph(graph);
+        }
+    }
+
+    // ---------------------- 修改父节点 ----------------------
+    function changeParent() {
+        const newParentId = document.getElementById('parentSelect').value;
+        if (!selectedNode || !newParentId) return;
+
+        // 删除原有父连线
+        const oldParentLink = graph.links.find(link => link.target.id === selectedNode.id);
+        if (oldParentLink) {
+            graph.links = graph.links.filter(link => link !== oldParentLink);
+        }
+
+        // 添加新父连线
+        const newParent = graph.nodes.find(node => node.id === newParentId);
+        graph.links.push({ source: newParent, target: selectedNode });
+        selectedNode.parentId = newParent.id;
+
+        renderGraph(graph);
+    }
+
+    // ---------------------- 添加子节点 ----------------------
+    function addChild() {
+        const newLabel = document.getElementById('newChildInput').value.trim();
+        if (!selectedNode || !newLabel) return;
+
+        const newNodeId = `${selectedNode.id}-child-${Date.now()}`;
+        const newNode = {
+            id: newNodeId,
+            label: newLabel,
+            group: `group-${getDepth(selectedNode) + 1}`,
+            parentId: selectedNode.id
+        };
+        graph.nodes.push(newNode);
+        graph.links.push({ source: selectedNode, target: newNode });
+
+        document.getElementById('newChildInput').value = '';
+        renderChildrenSelect(selectedNode);
+        renderGraph(graph);
+    }
+
+    // ---------------------- 删除子节点 ----------------------
+    function removeSelectedChildren() {
+        const childrenSelect = document.getElementById('childrenSelect');
+        const selectedChildren = Array.from(childrenSelect.selectedOptions).map(option => option.value);
+        if (selectedChildren.length === 0) return;
+
+        graph.nodes = graph.nodes.filter(node => !selectedChildren.includes(node.id));
+        graph.links = graph.links.filter(link =>
+            !selectedChildren.includes(link.target.id) &&
+            !selectedChildren.includes(link.source.id)
+        );
+
+        renderChildrenSelect(selectedNode);
+        renderGraph(graph);
+    }
+
+    // ---------------------- 获取节点深度 ----------------------
+    function getDepth(node) {
+        let depth = 0;
+        let current = node;
+        while (current.parentId) {
+            current = graph.nodes.find(n => n.id === current.parentId);
+            depth++;
+        }
+        return depth;
+    }
+
+    // ---------------------- 检查子节点关系 ----------------------
+    function isDescendant(parent, node) {
+        if (parent.id === node.id) return true;
+        return graph.links.some(link => link.source.id === parent.id && isDescendant(link.target, node));
+    }
+
+    // ---------------------- 下载图谱 ----------------------
+    function downloadGraph() {
+        const rootNodes = graph.nodes.filter(node => !graph.links.some(link => link.target.id === node.id));
+        const root = {};
+
+        rootNodes.forEach(rootNode => {
+            root[rootNode.label] = buildSubtree(rootNode);
+        });
+
+        function buildSubtree(node) {
+            const children = graph.links.filter(link => link.source.id === node.id).map(link => link.target);
+            if (children.length === 0) return null; // 无子节点时标记为null
+
+            const subtree = {};
+            children.forEach(child => {
+                const childSubtree = buildSubtree(child);
+                if (childSubtree === null) {
+                    subtree[child.label] = null; // 单个无子节点直接标记
+                } else {
+                    // 处理多个子节点或嵌套结构
+                    if (Array.isArray(childSubtree)) {
+                        if (!Array.isArray(subtree[child.label])) {
+                            subtree[child.label] = [];
+                        }
+                        subtree[child.label].push(...childSubtree);
+                    } else {
+                        subtree[child.label] = childSubtree;
+                    }
+                }
+            });
+
+            // 若所有子节点均为null，则简化为数组
+            if (Object.values(subtree).every(val => val === null)) {
+                return Object.keys(subtree);
+            }
+            return subtree;
+        }
+
+        // 转换为JSON并下载
+        const jsonString = JSON.stringify(root, null, 2);
+        const blob = new Blob([jsonString], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'graph-structure.json';
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    }
+
+    // ---------------------- 保存所有修改 ----------------------
+    function saveGraph() {
+        // 可扩展为保存到后端或本地存储
+        // 此处触发重新渲染以应用所有修改
+        renderGraph(graph);
+    }
+</script>
